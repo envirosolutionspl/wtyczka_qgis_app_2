@@ -17,13 +17,10 @@ jobs:
     strategy:
       matrix:
         qgis_version: [
-#          "latest",
-#          "3.40",
           "release-3_34",
           "release-3_28",
         ]
     steps:
-
       - name: Check out repository
         uses: actions/checkout@v4
         with:
