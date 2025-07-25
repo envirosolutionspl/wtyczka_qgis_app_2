@@ -6,44 +6,31 @@ on:
       - main
 
 jobs:
-  test:
+  tests:
     runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: .docker
     strategy:
       matrix:
-        qgis-version: ["release-3_28", "release-3_34"] # Add required QGIS versions
-
-    container:
-      image: qgis/qgis:${{ matrix.qgis-version }}
-      options: --name qgis_container
-      env:
-        DISPLAY: ":99"
-        QGIS_DISABLE_MESSAGE_HOOKS: 1
-        QGIS_PREFIX_PATH: /usr
-
+        qgis_version: [
+#          "latest",
+#          "3.40",
+          "release-3_34",
+          "release-3_28",
+        ]
     steps:
-      - name: Checkout repository
+
+      - name: Check out repository
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          submodules: 'true'
 
-      - name: Install dependencies
-        run: |
-          apt-get update
-          apt-get install -y xvfb
-          pip install pytest pytest-xdist pytest-cov
+      - name: Make env
+        run: cd .. && make env QGIS_VERSION=${{ matrix.qgis_version }}
 
-      - name: Prepare Xvfb for GUI tests
-        run: |
-          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+      - name: Launching docker compose
+        run: ./start.sh
 
-      - name: Run Python tests
-        run: |
-          python -m unittest
-
-      # - name: Stop and remove QGIS Docker container
-      #   run: |
-      #     docker stop qgis-server
-      #     docker rm qgis-server
+      - name: Running tests
+        run: ./exec.sh
