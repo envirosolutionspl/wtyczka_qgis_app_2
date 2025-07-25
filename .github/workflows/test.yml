@@ -1,0 +1,49 @@
+name: QGIS Python Tests
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up QGIS Docker
+        run: |
+          docker pull camptocamp/qgis-server:3.28
+          docker run -d --name qgis-server -p 8080:80 camptocamp/qgis-server:3.28
+
+      - name: Wait for QGIS Server to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:8080; then
+              echo "QGIS Server is up!"
+              break
+            fi
+            echo "Waiting for QGIS Server..."
+            sleep 2
+          done
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'  # Specify the Python version you need
+
+      # - name: Install dependencies
+      #   run: |
+      #     python -m pip install --upgrade pip
+      #     pip install -r requirements.txt  # Ensure you have a requirements.txt file
+
+      - name: Run Python tests
+        run: |
+          python -m unittest discover -s test  # Adjust the test directory as needed
+
+      - name: Stop and remove QGIS Docker container
+        run: |
+          docker stop qgis-server
+          docker rm qgis-server
