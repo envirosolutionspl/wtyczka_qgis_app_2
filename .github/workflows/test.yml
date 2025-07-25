@@ -33,7 +33,7 @@ jobs:
         run: cd .. && make env QGIS_VERSION=${{ matrix.qgis_version }}
 
       - name: Launching docker compose
-        run: ./start.sh
+        run: .docker/start.sh
 
       - name: Running tests
         run: ./exec.sh
