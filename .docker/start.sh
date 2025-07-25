@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-docker compose up -d# --force-recreate
+docker compose -f docker-compose.yml up -d
 echo 'Wait 10 seconds'
 sleep 10
 echo 'Installation of the plugin'
-# docker exec -t qgis sh -c "qgis_setup.sh lizmap"
+docker exec -t qgis sh -c "qgis_setup.sh wtyczka_qgis_app_2"
 # docker exec -t qgis sh -c "pip3 install webdavclient3"
-# docker exec -t qgis sh -c "pip3 install psycopg[binary]"
+docker exec -t qgis sh -c "pip3 install psycopg[binary]"
 echo 'Containers are running'
