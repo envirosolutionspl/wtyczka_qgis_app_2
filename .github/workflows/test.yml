@@ -5,8 +5,14 @@ on:
     branches:
       - main
     paths:
-      - 'wtyczka_qgis_app_2/**'
+      - 'wtyczka_qgis_app/**'
       - '.docker/**'
+
+env:
+  # Assign the version provided by 'workflow_dispatch' if available; otherwise, use the default.
+  PLUGIN_NAME: wtyczka_qgis_app
+  TEST_FUNCTION: python -m unittest
+  DOCKER_IMAGE: qgis/qgis
 
 jobs:
   tests:
@@ -22,16 +28,30 @@ jobs:
         ]
     steps:
     
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - name: Checkout plugin code
+        uses: actions/checkout@v3
         with:
-          submodules: 'true'
+          path: plugin
 
-      - name: Make env
-        run: cd .. && make env QGIS_VERSION=${{ matrix.qgis_version }}
+      # - name: Copy client files to the plugin directory
+      #   run: |
+      #     cp -r client/mergin plugin/Mergin
 
-      - name: Uruchomienie docker compose
-        run: ./start.sh
+      - name: Docker pull and create qgis-testing-environment
+        run: |
+          docker pull "$DOCKER_IMAGE":${{ matrix.docker_tags }}
+          docker run -d --name qgis-testing-environment -v "$GITHUB_WORKSPACE"/plugin:/tests_directory -e DISPLAY=:99 "$DOCKER_IMAGE":${{ matrix.docker_tags }}
+          # Wait for xvfb to finish starting
+          printf "Waiting for the docker...🐳..."
+          sleep 10
+          echo " done 🥩"
 
-      - name: Uruchomienie testów
-        run: ./exec.sh
+      - name: Docker set up QGIS
+        run: |
+          docker exec qgis-testing-environment sh -c "qgis_setup.sh $PLUGIN_NAME"
+          docker exec qgis-testing-environment sh -c "rm -f /root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/$PLUGIN_NAME"
+          docker exec qgis-testing-environment sh -c "ln -s /tests_directory/$PLUGIN_NAME /root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/$PLUGIN_NAME"
+
+      - name: Docker run plugin tests
+        run: |
+          docker exec qgis-testing-environment sh -c "cd /tests_directory/$PLUGIN_NAME/test && qgis_testrunner.sh $TEST_FUNCTION"
