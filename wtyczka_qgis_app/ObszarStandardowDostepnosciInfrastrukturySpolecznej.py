@@ -40,7 +40,7 @@ def my_form_open(dialog, layer, feature):
         if dlg.parent() == None:
             return
         
-        dlg.parent().setWindowTitle("Atrybuty OSD, nazwa warstwy:  + layer.name())
+        dlg.parent().setWindowTitle("Atrybuty OSD, nazwa warstwy: " + layer.name())
         dlg.parent().setMinimumWidth(750)
         dlg.parent().setMaximumWidth(800)
         dlg.parent().setMaximumHeight(590)

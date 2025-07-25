@@ -1987,7 +1987,7 @@ class AppModule(BaseModule):
 
 
     def saveLayerToGML(self):
-        Processing.initialize()
+        # Processing.initialize()
         s = QgsSettings()
         defaultPath = s.value("qgis_app2/settings/defaultPath", "/")
         
