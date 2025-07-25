@@ -41,7 +41,7 @@ jobs:
 
       - name: Run Python tests
         run: |
-          python -m unittest discover -s ../test  # Adjust the test directory as needed
+          python -m unittest discover -s tests/  # Adjust the test directory as needed
 
       - name: Stop and remove QGIS Docker container
         run: |
