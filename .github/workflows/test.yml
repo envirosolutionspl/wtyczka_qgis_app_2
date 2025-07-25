@@ -1,5 +1,19 @@
-name: QGIS Python Tests
+name: Tests 🎳
 
+on:
+  push:
+    tags:
+      - "*"
+    branches:
+      - master
+    paths:
+      - '/**'
+      - '.docker/**'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - '/**'
 on:
   push:
     branches:
