@@ -1165,7 +1165,7 @@ class AppModule(BaseModule):
         geomTypeEPSG = 'polygon?crs=epsg:' + epsg
         
         if epsg in (0, NULL, ''):
-            # showPopup("Wygeneruj warstwę","Proszę uzupełnić ustawienia wtyczki APP.")
+            showPopup("Wygeneruj warstwę","Proszę uzupełnić ustawienia wtyczki APP.")
             return
         
         QgsProject.instance().setCrs(QgsCoordinateReferenceSystem(int(epsg)))
