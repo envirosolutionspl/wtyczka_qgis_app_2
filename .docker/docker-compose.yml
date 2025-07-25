@@ -3,8 +3,7 @@ services:
     image: qgis/qgis:${QGIS_VERSION}
     container_name: qgis
     volumes:
-      # - /tmp/.X11-unix:/tmp/.X11-unix
-      - ../lizmap:/tests_directory/lizmap
+      - /tmp/
     environment:
       # - DISPLAY=unix$DISPLAY
       - CI=True
