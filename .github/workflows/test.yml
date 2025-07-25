@@ -7,10 +7,6 @@ on:
     paths:
       - 'wtyczka_qgis_app_2/**'
       - '.docker/**'
-on:
-  push:
-    branches:
-      - main
 
 jobs:
   tests:
