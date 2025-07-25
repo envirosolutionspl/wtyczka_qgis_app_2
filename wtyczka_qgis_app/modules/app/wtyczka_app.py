@@ -1154,18 +1154,18 @@ class AppModule(BaseModule):
 
 
     def newEmptyLayer(self):
-        # s = QgsSettings()
+        s = QgsSettings()
         epsg = s.value("qgis_app2/settings/strefaPL2000", "")
         layer = QgsVectorLayer('multipolygon?crs=epsg:' + str(epsg) + self.fieldsDefinition(fields=fields), 'granice_app', 'memory')
 
 
     def newEmptyLayer(self):
-        # s = QgsSettings()
+        s = QgsSettings()
         epsg = str(s.value("qgis_app2/settings/strefaPL2000", ""))
         geomTypeEPSG = 'polygon?crs=epsg:' + epsg
         
         if epsg in (0, NULL, ''):
-            showPopup("Wygeneruj warstwę","Proszę uzupełnić ustawienia wtyczki APP.")
+            # showPopup("Wygeneruj warstwę","Proszę uzupełnić ustawienia wtyczki APP.")
             return
         
         QgsProject.instance().setCrs(QgsCoordinateReferenceSystem(int(epsg)))
@@ -1987,8 +1987,8 @@ class AppModule(BaseModule):
 
 
     def saveLayerToGML(self):
-        # Processing.initialize()
-        # s = QgsSettings()
+        Processing.initialize()
+        s = QgsSettings()
         defaultPath = s.value("qgis_app2/settings/defaultPath", "/")
         
         namespace_map = {'wfs': 'http://www.opengis.net/wfs/2.0',
