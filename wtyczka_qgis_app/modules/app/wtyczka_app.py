@@ -1154,13 +1154,13 @@ class AppModule(BaseModule):
 
 
     def newEmptyLayer(self):
-        s = QgsSettings()
+        # s = QgsSettings()
         epsg = s.value("qgis_app2/settings/strefaPL2000", "")
         layer = QgsVectorLayer('multipolygon?crs=epsg:' + str(epsg) + self.fieldsDefinition(fields=fields), 'granice_app', 'memory')
 
 
     def newEmptyLayer(self):
-        s = QgsSettings()
+        # s = QgsSettings()
         epsg = str(s.value("qgis_app2/settings/strefaPL2000", ""))
         geomTypeEPSG = 'polygon?crs=epsg:' + epsg
         
@@ -1988,7 +1988,7 @@ class AppModule(BaseModule):
 
     def saveLayerToGML(self):
         # Processing.initialize()
-        s = QgsSettings()
+        # s = QgsSettings()
         defaultPath = s.value("qgis_app2/settings/defaultPath", "/")
         
         namespace_map = {'wfs': 'http://www.opengis.net/wfs/2.0',
