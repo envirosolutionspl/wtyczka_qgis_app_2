@@ -4,22 +4,16 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'wtyczka_qgis_app/**'
-      - '.docker/**'
 
 env:
   # Assign the version provided by 'workflow_dispatch' if available; otherwise, use the default.
   PLUGIN_NAME: wtyczka_qgis_app
-  TEST_FUNCTION: python -m unittest
+  TEST_FUNCTION: test_run_qgis_tests.test_all
   DOCKER_IMAGE: qgis/qgis
 
 jobs:
   tests:
     runs-on: ubuntu-22.04
-    defaults:
-      run:
-        working-directory: .docker
     strategy:
       matrix:
         qgis_version: [
@@ -39,7 +33,7 @@ jobs:
 
       - name: Docker pull and create qgis-testing-environment
         run: |
-          docker pull "$DOCKER_IMAGE":${{ matrix.docker_tags }}
+          docker pull "$DOCKER_IMAGE":${{ matrix.qgis_version }}
           docker run -d --name qgis-testing-environment -v "$GITHUB_WORKSPACE"/plugin:/tests_directory -e DISPLAY=:99 "$DOCKER_IMAGE":${{ matrix.qgis_version }}
           # Wait for xvfb to finish starting
           echo "Waiting for the docker...🐳..."
