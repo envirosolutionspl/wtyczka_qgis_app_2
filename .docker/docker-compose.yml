@@ -3,7 +3,7 @@ services:
     image: qgis/qgis:${QGIS_VERSION}
     container_name: qgis
     volumes:
-      - /tmp/
+      - ../wtyczka_app_2:/tests_directory
     environment:
       # - DISPLAY=unix$DISPLAY
       - CI=True
