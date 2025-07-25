@@ -8,42 +8,37 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        qgis-version: ["release-3_28", "release-3_34"] # Add required QGIS versions
+
+    container:
+      image: qgis/qgis:${{ matrix.qgis-version }}
+      options: --name qgis_container
+      env:
+        DISPLAY: ":99"
+        QGIS_DISABLE_MESSAGE_HOOKS: 1
+        QGIS_PREFIX_PATH: /usr
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up QGIS Docker
-        run: |
-          docker pull camptocamp/qgis-server:3.28
-          docker run -d --name qgis-server -p 8080:80 camptocamp/qgis-server:3.28
-
-      - name: Wait for QGIS Server to be ready
-        run: |
-          for i in {1..30}; do
-            if curl -s http://localhost:8080; then
-              echo "QGIS Server is up!"
-              break
-            fi
-            echo "Waiting for QGIS Server..."
-            sleep 2
-          done
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.8'  # Specify the Python version you need
+          python-version: '3.9'
 
-      # - name: Install dependencies
-      #   run: |
-      #     python -m pip install --upgrade pip
-      #     pip install -r requirements.txt  # Ensure you have a requirements.txt file
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y xvfb
+          pip install pytest pytest-xdist pytest-cov
+
+      - name: Prepare Xvfb for GUI tests
+        run: |
+          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
 
       - name: Run Python tests
         run: |
           python -m unittest
-
-      - name: Stop and remove QGIS Docker container
-        run: |
-          docker stop qgis-server
-          docker rm qgis-server
