@@ -40,9 +40,9 @@ jobs:
       - name: Docker pull and create qgis-testing-environment
         run: |
           docker pull "$DOCKER_IMAGE":${{ matrix.docker_tags }}
-          docker run -d --name qgis-testing-environment -v "$GITHUB_WORKSPACE"/plugin:/tests_directory -e DISPLAY=:99 "$DOCKER_IMAGE":${{ matrix.docker_tags }}
+          docker run -d --name qgis-testing-environment -v "$GITHUB_WORKSPACE"/plugin:/tests_directory -e DISPLAY=:99 "$DOCKER_IMAGE":${{ matrix.qgis_version }}
           # Wait for xvfb to finish starting
-          printf "Waiting for the docker...🐳..."
+          echo "Waiting for the docker...🐳..."
           sleep 10
           echo " done 🥩"
 
