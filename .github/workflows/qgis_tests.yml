@@ -17,11 +17,11 @@ jobs:
     strategy:
       matrix:
         qgis_version: [
-          "3.34.5-jammy",
-          "3.34.15-jammy",
-          "3.36.3-jammy",
-          "3.38.3-jammy",
-          "3.40.4-jammy",
+          "release-3_28",
+          "release-3_30",
+          "release-3_32",
+          "release-3_34",
+          "release-3_36",
         ]
     steps:
     
