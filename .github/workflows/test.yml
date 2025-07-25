@@ -11,6 +11,12 @@ env:
   TEST_FUNCTION: test_run_qgis_tests.test_all
   DOCKER_IMAGE: qgis/qgis
 
+env:
+  # Assign the version provided by 'workflow_dispatch' if available; otherwise, use the default.
+  PLUGIN_NAME: wtyczka_qgis_app
+  TEST_FUNCTION: python -m unittest
+  DOCKER_IMAGE: qgis/qgis
+
 jobs:
   tests:
     runs-on: ubuntu-22.04
