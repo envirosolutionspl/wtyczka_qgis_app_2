@@ -21,7 +21,7 @@ jobs:
           "release-3_32",
           "release-3_34",
           "release-3_36",
-          "ltr"
+          "final-3_34_11"
         ]
     steps:
     
