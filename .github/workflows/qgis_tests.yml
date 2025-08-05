@@ -17,11 +17,11 @@ jobs:
     strategy:
       matrix:
         qgis_version: [
+          "release-3_28",
           "release-3_30",
           "release-3_32",
           "release-3_34",
-          "release-3_36",
-          "final-3_34_11"
+          "release-3_36"
         ]
     steps:
     
