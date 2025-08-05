@@ -5,6 +5,7 @@ import sys
 import unittest
 import pathlib
 import shutil
+import tempfile
 
 # Allow running this test directly without relying on the tests package.
 # As with ``tests/__init__``, we need the parent of the plugin directory on
@@ -18,8 +19,8 @@ for path in (PLUGIN_PARENT, PLUGIN_ROOT):
 class SaveLayerToGmlTest(unittest.TestCase):
     def setUp(self):
         self.plugin_dir = os.path.dirname(os.path.dirname(__file__))
-        self.pog_gml = os.path.join(self.plugin_dir, 'tests', 'data', 'AktPlanowaniaPrzestrzennego.gml')
-        self.spl_gml = os.path.join(self.plugin_dir, 'tests', 'data', 'StrefaPlanistyczna.gml')
+        self.pog_gml = os.path.join(self.plugin_dir, 'test', 'data', 'AktPlanowaniaPrzestrzennego.gml')
+        self.spl_gml = os.path.join(self.plugin_dir, 'test', 'data', 'StrefaPlanistyczna.gml')
 
     def test_save_layer_to_gml(self):
         try:
@@ -47,60 +48,58 @@ class SaveLayerToGmlTest(unittest.TestCase):
 
         plugin = AppModule(iface)
 
-        s = QgsSettings()
-        data_path = os.path.join(self.plugin_dir, 'tests', 'data')
-        s.setValue('qgis_app2/settings/defaultPath', data_path)
-        s.setValue('qgis_app2/settings/strefaPL2000', 2178)
-        s.setValue('qgis_app2/settings/rodzajZbioru', 'POG')
-        s.setValue('qgis_app2/settings/jpt', 'test')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            s = QgsSettings()
+            s.setValue('qgis_app2/settings/defaultPath', tmpdir)
+            s.setValue('qgis_app2/settings/strefaPL2000', 4326)
+            s.setValue('qgis_app2/settings/rodzajZbioru', 'POG')
+            s.setValue('qgis_app2/settings/jpt', 'test')
 
-        gfs_source = os.path.join(self.plugin_dir, 'GFS', 'template.gfs')
-        gfs_target_dir = pathlib.Path(QgsApplication.qgisSettingsDirPath()) / 'python/plugins/wtyczka_qgis_app/GFS'
-        gfs_target_dir.mkdir(parents=True, exist_ok=True)
-        dst_gfs = gfs_target_dir / 'template.gfs'
+            # Copy GML fixtures to a writable directory so QGIS can create
+            # accompanying .gfs files without hitting permission errors.
+            pog_gml = shutil.copy(self.pog_gml, os.path.join(tmpdir, 'granicaPOG.gml'))
+            spl_gml = shutil.copy(self.spl_gml, os.path.join(tmpdir, 'strefaPlanistyczna.gml'))
 
-        # Kopiuj tylko jeśli plik docelowy nie istnieje
-        if not dst_gfs.exists():
-            shutil.copyfile(gfs_source, dst_gfs)
+            gfs_source = os.path.join(self.plugin_dir, 'GFS', 'template.gfs')
+            gfs_target_dir = pathlib.Path(QgsApplication.qgisSettingsDirPath()) / 'python/plugins/wtyczka_qgis_app/GFS'
+            gfs_target_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(gfs_source, gfs_target_dir / 'template.gfs')
 
-        from PyQt5 import QtWidgets
-        original_open = QtWidgets.QFileDialog.getOpenFileName
+            from PyQt5 import QtWidgets
+            original_open = QtWidgets.QFileDialog.getOpenFileName
 
-        try:
-            plugin.activeDlg = type('dlg', (), {'name': 'GranicaPOG'})()
-            QtWidgets.QFileDialog.getOpenFileName = staticmethod(lambda *args, **kwargs: (self.pog_gml, 'pliki GML (*.gml);'))
-            plugin.loadFromGMLorGPKG(False)
+            try:
+                files_iter = iter([pog_gml, spl_gml])
+                plugin.activeDlg = type('dlg', (), {'name': 'GranicaPOG'})()
+                QtWidgets.QFileDialog.getOpenFileName = staticmethod(lambda *args, **kwargs: (next(files_iter), 'pliki GML (*.gml);'))
+                plugin.loadFromGMLorGPKG(False)
 
-            plugin.activeDlg = type('dlg', (), {'name': 'StrefaPlanistyczna'})()
-            QtWidgets.QFileDialog.getOpenFileName = staticmethod(lambda *args, **kwargs: (self.spl_gml, 'pliki GML (*.gml);'))
-            plugin.loadFromGMLorGPKG(False)
-        finally:
-            QtWidgets.QFileDialog.getOpenFileName = original_open
+                plugin.activeDlg = type('dlg', (), {'name': 'StrefaPlanistyczna'})()
+                plugin.loadFromGMLorGPKG(False)
+            finally:
+                QtWidgets.QFileDialog.getOpenFileName = original_open
 
-        project = QgsProject.instance()
-        pog_layer = project.mapLayersByName('GranicaPOG')[0]
-        spl_layer = project.mapLayersByName('StrefaPlanistyczna')[0]
-        self.assertTrue(pog_layer.isValid(), 'POG layer failed to load')
-        self.assertTrue(spl_layer.isValid(), 'SPL layer failed to load')
+            project = QgsProject.instance()
+            pog_layer = project.mapLayersByName('GranicaPOG')[0]
+            spl_layer = project.mapLayersByName('StrefaPlanistyczna')[0]
+            self.assertTrue(pog_layer.isValid(), 'POG layer failed to load')
+            self.assertTrue(spl_layer.isValid(), 'SPL layer failed to load')
 
-        plugin.wektorInstrukcjaDialogSPL = type('dlg', (), {'layers_comboBox': type('cmb', (), {'currentLayer': lambda self: spl_layer})()})()
-        plugin.activeDlg = plugin.wektorInstrukcjaDialogSPL
+            plugin.wektorInstrukcjaDialogSPL = type('dlg', (), {
+                'layers_comboBox': type('cmb', (), {'currentLayer': lambda self: spl_layer})()
+            })()
+            plugin.activeDlg = plugin.wektorInstrukcjaDialogSPL
 
-        out_path = os.path.join(self.plugin_dir, 'tests', 'data', 'output.gml')
+            out_path = os.path.join(tmpdir, 'output.gml')
 
-        original_save = QtWidgets.QFileDialog.getSaveFileName
-        QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda directory=None, filter=None: (out_path, None))
-        try:
-            plugin.saveLayerToGML()
-        finally:
-            QtWidgets.QFileDialog.getSaveFileName = original_save
+            original_save = QtWidgets.QFileDialog.getSaveFileName
+            QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda directory=None, filter=None: (out_path, None))
+            try:
+                plugin.saveLayerToGML()
+            finally:
+                QtWidgets.QFileDialog.getSaveFileName = original_save
 
-        self.assertTrue(os.path.exists(out_path), 'Output GML not created')
-        os.remove(out_path)
-        for gml in (self.pog_gml, self.spl_gml):
-            gfs = gml.replace('.gml', '.gfs')
-            if os.path.exists(gfs):
-                os.remove(gfs)
+            self.assertTrue(os.path.exists(out_path), 'Output GML not created')
 
 if __name__ == '__main__':
     unittest.main()
