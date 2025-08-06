@@ -8,6 +8,7 @@ import shutil
 import tempfile
 
 import processing
+from PyQt5.QtWidgets import QComboBox
 from qgis._core import QgsVectorLayer, QgsProject, QgsCoordinateReferenceSystem, QgsSettings
 
 # Allow running this test directly without relying on the test package.
@@ -140,7 +141,7 @@ class SaveLayerToGmlTest(unittest.TestCase):
             })()
             plugin.activeDlg = plugin.wektorInstrukcjaDialogPOG
             plugin.activeDlg.name = 'AktPlanowaniaPrzestrzennego'
-            plugin.activeDlg.layers_co
+            plugin.activeDlg.layers_comboBox = QComboBox()
             plugin.loadFromGMLorGPKG(False, app_gml)
             out_path = os.path.join(tmpdir, 'output_pog.gml')
 
