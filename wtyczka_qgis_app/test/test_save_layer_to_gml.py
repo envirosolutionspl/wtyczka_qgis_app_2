@@ -8,7 +8,10 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 
-from qgis._core import QgsVectorLayer, QgsProject
+
+import processing
+from PyQt5.QtWidgets import QComboBox
+from qgis._core import QgsVectorLayer, QgsProject, QgsCoordinateReferenceSystem, QgsSettings
 from qgis._gui import QgsMapLayerComboBox
 
 przypisaniePowiatuDoEPSGukladuPL2000 = {
@@ -145,12 +148,14 @@ class SaveLayerToGmlTest(unittest.TestCase):
         gfs_source = os.path.join(self.plugin_dir, 'GFS', 'template.gfs')
         gfs_target_dir = pathlib.Path(QgsApplication.qgisSettingsDirPath()) / 'python/plugins/wtyczka_qgis_app/GFS'
         gfs_target_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(gfs_source, gfs_target_dir / 'template.gfs')
-
+        if not os.path.exists(gfs_target_dir):
+            os.makedirs(gfs_target_dir, exist_ok=True)
+            shutil.copyfile(gfs_source, gfs_target_dir / 'template.gfs')
         templates_src = pathlib.Path(self.plugin_dir, 'modules', 'templates')
         templates_dst = pathlib.Path(
             QgsApplication.qgisSettingsDirPath()) / 'python/plugins/wtyczka_qgis_app/modules/templates'
-        shutil.copytree(templates_src, templates_dst, dirs_exist_ok=True)
+        if not os.path.exists(templates_dst):
+            shutil.copytree(templates_src, templates_dst, dirs_exist_ok=False)
         granice_src = pathlib.Path(self.plugin_dir, 'modules', 'app', 'A00_Granice_panstwa')
         granice_dst = pathlib.Path(
             QgsApplication.qgisSettingsDirPath()) / 'python/plugins/wtyczka_qgis_app/modules/app/A00_Granice_panstwa'
@@ -198,6 +203,7 @@ class SaveLayerToGmlTest(unittest.TestCase):
         self.assertTrue(os.path.exists(out_path), 'Output GML not created')
 
         return result
+
 
 
 if __name__ == '__main__':
