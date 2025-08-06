@@ -1579,7 +1579,7 @@ class AppModule(BaseModule):
         wersjaId_lineEdit.textChanged.connect(lambda: updateIdIPP())
 
 
-    def loadFromGMLorGPKG(self, analizy):
+    def loadFromGMLorGPKG(self, analizy, path = False):
         global informacjaOgolna
         
         Processing.initialize()
@@ -1616,8 +1616,12 @@ class AppModule(BaseModule):
                       "Wtyczka umożliwia wczytanie także niepoprawnych danych, aby umożliwić ich naprawienie. Rekomendujemy, aby plik sprawdzić w Przeglądarce danych planistycznych.")
             informacjaOgolna = True
         
-        file, format = QFileDialog.getOpenFileName(directory=defaultPath,filter = "pliki GML (*.gml);; pliki GeoPackage (*.gpkg);")
-        file = str(file)
+        if not path:
+            file, format = QFileDialog.getOpenFileName(directory=defaultPath,filter = "pliki GML (*.gml);; pliki GeoPackage (*.gpkg);")
+            file = str(file)
+        else:
+            file = path
+            format = 'pliki GML (*.gml)'
         
         if not file:
             return
@@ -1966,6 +1970,7 @@ class AppModule(BaseModule):
                         if layerName == 'ObszarZabudowySrodmiejskiej':
                             self.dodajStylOpartyORegulach(gkpg, subNamesOZS[n])
                 if activeDlgname != 'PytanieAppDialog':
+
                     self.activeDlg.layers_comboBox.setCurrentText(layerName)
                 self.iface.messageBar().pushSuccess("Wczytanie warstwy:","Wczytano warstwę.")
                 

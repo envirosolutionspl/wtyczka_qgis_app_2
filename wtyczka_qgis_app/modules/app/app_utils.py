@@ -11,7 +11,7 @@ from .. import dictionaries
 def isLayerInPoland(obrysLayer, layerName):
     granicaPolskiSHP = QgsApplication.qgisSettingsDirPath() + "/python/plugins/wtyczka_qgis_app/modules/app/A00_Granice_panstwa/A00_Granice_panstwa_bufor_300m.shp"
     warstwaGranicaPolski = QgsVectorLayer(granicaPolskiSHP, 'A00_Granice_panstwa', 'ogr')
-    
+    print(f'QgsApplication.qgisSettingsDirPath() {QgsApplication.qgisSettingsDirPath()}')
     # transformacja do układu granic Państwa
     reprojectlayer = processing.run("native:reprojectlayer", {
         'INPUT': warstwaGranicaPolski,
