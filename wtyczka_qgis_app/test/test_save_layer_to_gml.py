@@ -79,14 +79,14 @@ class IFaceStub:
         self.addToolBarWidget = lambda *a, **k: None
         self.removeToolBarIcon = lambda *a, **k: None
 
-
-@pytest.mark.parametrize(
-    "dataset_dir",
-    sorted(
-        [p for p in DATA_ROOT.iterdir() if p.is_dir() and p.name.isdigit()],
-        key=lambda p: int(p.name),
-    ),
-)
+dataset_dir = sorted([p for p in DATA_ROOT.iterdir() if p.is_dir() and p.name.isdigit()], key=lambda p: int(p.name),)
+# @pytest.mark.parametrize(
+#     "dataset_dir",
+#     sorted(
+#         [p for p in DATA_ROOT.iterdir() if p.is_dir() and p.name.isdigit()],
+#         key=lambda p: int(p.name),
+#     ),
+# )
 def test_pog_workflow(dataset_dir: Path, tmp_path, monkeypatch):
     logger.info("Processing dataset: %s", dataset_dir.name)
 
