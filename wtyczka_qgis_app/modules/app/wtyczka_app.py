@@ -1989,6 +1989,7 @@ class AppModule(BaseModule):
                 QApplication.restoreOverrideCursor()
                 showPopup("Wczytaj warstwę","Poprawnie wczytano warstwę " + layerName + ".")
         QApplication.restoreOverrideCursor()
+        return gkpg
 
 
     def saveLayerToGML(self):
