@@ -10,21 +10,23 @@ import tempfile
 
 from qgis.PyQt.QtWidgets import QComboBox
 from qgis._core import QgsVectorLayer, QgsProject, QgsCoordinateReferenceSystem, QgsSettings
+from qgis._gui import QgsMapLayerComboBox
 
 # Allow running this test directly without relying on the test package.
 # As with ``test/__init__``, we need the parent of the plugin directory on
 # ``sys.path`` so Python can resolve ``wtyczka_qgis_app``.
 PLUGIN_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 PLUGIN_PARENT = os.path.dirname(PLUGIN_ROOT)
-for path in (PLUGIN_PARENT, PLUGIN_ROOT):
+DATA_ROOT = pathlib.Path(__file__).parent / "data"
+for path in (PLUGIN_PARENT, PLUGIN_ROOT, DATA_ROOT):
     if path not in sys.path:
         sys.path.insert(0, path)
 
 class SaveLayerToGmlTest(unittest.TestCase):
     def setUp(self):
         self.plugin_dir = os.path.dirname(os.path.dirname(__file__))
-        self.app_gml = os.path.join(self.plugin_dir, 'test', 'data', '1' , 'pog', 'AktPlanowaniaPrzestrzennego.gml')
-        self.spl_gml = os.path.join(self.plugin_dir, 'test', 'data', '1' , 'strefy', 'StrefaPlanistyczna.gml')
+        self.app_gml = os.path.join(self.plugin_dir, 'test', 'data', '1', 'pog', 'AktPlanowaniaPrzestrzennego.gml')
+        self.spl_gml = os.path.join(self.plugin_dir, 'test', 'data', '1', 'strefy', 'StrefaPlanistyczna.gml')
 
     def load_layer_from_file(self, path):
         """
@@ -41,31 +43,9 @@ class SaveLayerToGmlTest(unittest.TestCase):
             dest_gfs = src.with_suffix(".gfs")
             if template.exists() and not dest_gfs.exists():
                 shutil.copyfile(str(template), str(dest_gfs))
-
-        # Initial load
         layer = QgsVectorLayer(str(src), name, "ogr")
         if not layer.isValid():
             return layer
-
-        # Assign and reproject to target CRS from plugin settings
-        settings = QgsSettings()
-        # target_epsg = settings.value("qgis_app2/settings/strefaPL2000", "")
-        # if target_epsg:
-        #     # Reproject layer in-memory
-        #     reprojected = processing.run(
-        #         'native:reprojectlayer',
-        #         {
-        #             'INPUT': layer,
-        #             'TARGET_CRS': QgsCoordinateReferenceSystem(f"EPSG:{target_epsg}"),
-        #             'OUTPUT': 'memory:'
-        #         }
-        #     )['OUTPUT']
-        #     # Ensure CRS and name
-        #     reprojected.setCrs(QgsCoordinateReferenceSystem(f"EPSG:{target_epsg}"))
-        #     reprojected.setName(name)
-        #     layer = reprojected
-
-        # Add layer to project
         QgsProject.instance().addMapLayer(layer)
         return layer
 
@@ -174,6 +154,7 @@ class SaveLayerToGmlTest(unittest.TestCase):
             QtWidgets.QFileDialog.getSaveFileName = original_save
 
         self.assertTrue(os.path.exists(out_path), 'Output GML not created')
+
 
 if __name__ == '__main__':
     unittest.main()
