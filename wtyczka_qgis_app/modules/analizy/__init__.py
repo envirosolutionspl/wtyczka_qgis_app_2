@@ -2,5 +2,5 @@
 from .dialogs import (
     AnalizyDialog
 )
-from .. import PLUGIN_VERSION
+from ... import PLUGIN_VERSION
 analizyDialog = AnalizyDialog()

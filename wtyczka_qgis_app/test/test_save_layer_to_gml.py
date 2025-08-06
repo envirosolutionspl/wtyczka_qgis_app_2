@@ -22,8 +22,8 @@ for path in (PLUGIN_PARENT, PLUGIN_ROOT):
 class SaveLayerToGmlTest(unittest.TestCase):
     def setUp(self):
         self.plugin_dir = os.path.dirname(os.path.dirname(__file__))
-        self.app_gml = os.path.join(self.plugin_dir, 'test', 'data', 'AktPlanowaniaPrzestrzennego.gml')
-        self.spl_gml = os.path.join(self.plugin_dir, 'test', 'data', 'StrefaPlanistyczna.gml')
+        self.app_gml = os.path.join(self.plugin_dir, 'test', 'data', '1' , 'pog', 'AktPlanowaniaPrzestrzennego.gml')
+        self.spl_gml = os.path.join(self.plugin_dir, 'test', 'data', '1' , 'strefy', 'StrefaPlanistyczna.gml')
 
     def load_layer_from_file(self, path):
         """
@@ -161,7 +161,7 @@ class SaveLayerToGmlTest(unittest.TestCase):
 
             out_path = os.path.join(tmpdir, 'output_spl.gml')
 
-            from PyQt5 import QtWidgets
+            from qgis.PyQt import QtWidgets
             original_save = QtWidgets.QFileDialog.getSaveFileName
             QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda directory=None, filter=None: (out_path, None))
             try:
