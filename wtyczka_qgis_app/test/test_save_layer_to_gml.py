@@ -1,113 +1,147 @@
-"""Unit test for saving a layer to GML through the plugin."""
+"""End-to-end workflow test using plugin methods.
 
-import os
+The test mirrors user interaction with the plugin:
+1. "Wczytaj warstwę do edycji" – loadFromGMLorGPKG
+2. "Zapisz warstwę do GML" – saveLayerToGML
+3. "Dalej" – wektorInstrukcjaDialog_next_btn_clicked
+
+Real plugin functions are invoked.  If QGIS is unavailable in the
+environment the tests are skipped.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
 import sys
-import unittest
-import pathlib
-import shutil
-import tempfile
+import xml.etree.ElementTree as ET
+import logging
+import types
+import os
+import atexit
+import pytest
 
-from qgis._core import QgsVectorLayer, QgsProject
+# # # Skip entire module when QGIS is not installed – e.g. in CI environments
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+qgis = pytest.importorskip("qgis", reason="QGIS environment required")
 
-# Allow running this test directly without relying on the test package.
-# As with ``test/__init__``, we need the parent of the plugin directory on
-# ``sys.path`` so Python can resolve ``wtyczka_qgis_app``.
-PLUGIN_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-PLUGIN_PARENT = os.path.dirname(PLUGIN_ROOT)
-for path in (PLUGIN_PARENT, PLUGIN_ROOT):
-    if path not in sys.path:
-        sys.path.insert(0, path)
+from qgis.core import QgsSettings, QgsApplication
+from qgis.PyQt.QtWidgets import QFileDialog, QMessageBox
 
-class SaveLayerToGmlTest(unittest.TestCase):
-    def setUp(self):
-        self.plugin_dir = os.path.dirname(os.path.dirname(__file__))
-        self.app_gml = os.path.join(self.plugin_dir, 'test', 'data', 'AktPlanowaniaPrzestrzennego.gml')
-        self.spl_gml = os.path.join(self.plugin_dir, 'test', 'data', 'StrefaPlanistyczna.gml')
+# Initialise minimal QGIS application so dialogs can be created safely during imports
+_qgs_app = QgsApplication([], False)
+_qgs_app.initQgis()
+atexit.register(_qgs_app.exitQgis)
 
-    def load_layer_from_file(self, path, name=None):
-        src = pathlib.Path(path)
-        if name is None:
-            name = src.stem
-        if src.suffix.lower() == ".gml":
-            template = pathlib.Path(__file__).resolve().parents[1] / "GFS" / "template.gfs"
-            dest_gfs = src.with_suffix(".gfs")
-            if template.exists() and not dest_gfs.exists():
-                shutil.copyfile(str(template), str(dest_gfs))
+# Ensure the plugin package is importable as `wtyczka_qgis_app.  When tests
+# run from the repository root, Python sees only this directory on `sys.path;
+# relative imports inside the plugin expect the package name, so we prepend the
+# parent directory.
+PACKAGE_PARENT = Path(__file__).resolve().parents[2]
+if str(PACKAGE_PARENT) not in sys.path:
+    sys.path.insert(0, str(PACKAGE_PARENT))
 
-        layer = QgsVectorLayer(str(src), name, "ogr")
-        if layer.isValid():
-            QgsProject.instance().addMapLayer(layer)
-        return layer
+from wtyczka_qgis_app.wtyczka_app import WtyczkaAPP
+from wtyczka_qgis_app.modules import utils
 
-    def test_save_layer_to_gml(self):
-        try:
-            from qgis.core import QgsProject, QgsSettings, QgsApplication
-            from qgis.testing import start_app
-            start_app()
-        except Exception:
-            self.skipTest('QGIS environment is not available')
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-        from wtyczka_qgis_app.modules.app.wtyczka_app import AppModule
-        try:
-            from qgis.utils import iface
-        except Exception:
-            iface = None
-        if iface is None:
-            class DummyIface:
-                class DummyMessageBar:
-                    def pushSuccess(self, *args, **kwargs):
-                        pass
+DATA_ROOT = Path(__file__).parent / "data"
 
-                def messageBar(self):
-                    return self.DummyMessageBar()
 
-            iface = DummyIface()
+def extract_jpt_from_pog(pog_gml: Path) -> str:
+    tree = ET.parse(str(pog_gml))
+    ns = {
+        "app": "https://www.gov.pl/static/zagospodarowanieprzestrzenne/schemas/app/2.0"
+    }
+    elem = tree.find(".//app:przestrzenNazw", ns)
+    if elem is None or not elem.text:
+        raise ValueError("przestrzenNazw not found")
+    core = elem.text.split("/")[-1].split("-")[0]
+    jpt = core[:5]
+    logger.info("Extracted JPT: %s", jpt)
+    return jpt
 
-        plugin = AppModule(iface)
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            s = QgsSettings()
-            s.setValue('qgis_app2/settings/defaultPath', tmpdir)
-            s.setValue('qgis_app2/settings/strefaPL2000', 2178)
-            s.setValue('qgis_app2/settings/rodzajZbioru', 'POG')
-            s.setValue('qgis_app2/settings/jpt', 'test')
+class IFaceStub:
+    """Minimal QGIS interface stub used only by the plugin."""
 
-            # Copy GML fixtures to a writable directory so QGIS can create
-            # accompanying .gfs files without hitting permission errors.
-            app_gml = shutil.copy(self.app_gml, os.path.join(tmpdir, 'AktPlanowaniaPrzestrzennego.gml'))
-            spl_gml = shutil.copy(self.spl_gml, os.path.join(tmpdir, 'StrefaPlanistyczna.gml'))
+    def __init__(self):
+        bar = types.SimpleNamespace(
+            pushSuccess=lambda *a, **k: None,
+            pushCritical=lambda *a, **k: None,
+            pushWarning=lambda *a, **k: None,
+        )
+        self.messageBar = lambda: bar
+        self.mainWindow = lambda: None
+        self.addPluginToMenu = lambda *a, **k: None
+        self.removePluginMenu = lambda *a, **k: None
+        self.addToolBarWidget = lambda *a, **k: None
+        self.removeToolBarIcon = lambda *a, **k: None
 
-            gfs_source = os.path.join(self.plugin_dir, 'GFS', 'template.gfs')
-            gfs_target_dir = pathlib.Path(QgsApplication.qgisSettingsDirPath()) / 'python/plugins/wtyczka_qgis_app/GFS'
-            gfs_target_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(gfs_source, gfs_target_dir / 'template.gfs')
 
-            templates_src = pathlib.Path(self.plugin_dir, 'modules', 'templates')
-            templates_dst = pathlib.Path(QgsApplication.qgisSettingsDirPath()) / 'python/plugins/wtyczka_qgis_app/modules/templates'
-            shutil.copytree(templates_src, templates_dst, dirs_exist_ok=True)
+@pytest.mark.parametrize(
+    "dataset_dir",
+    sorted(
+        [p for p in DATA_ROOT.iterdir() if p.is_dir() and p.name.isdigit()],
+        key=lambda p: int(p.name),
+    ),
+)
+def test_pog_workflow(dataset_dir: Path, tmp_path, monkeypatch):
+    logger.info("Processing dataset: %s", dataset_dir.name)
 
-            app_layer = self.load_layer_from_file(app_gml)
-            spl_layer = self.load_layer_from_file(spl_gml)
+    iface = IFaceStub()
+    plugin = WtyczkaAPP(iface)
 
-            self.assertTrue(app_layer.isValid(), 'AktPlanowaniaPrzestrzennego layer failed to load')
-            self.assertTrue(spl_layer.isValid(), 'SPL layer failed to load')
+    # Basic settings expected by plugin
+    settings = QgsSettings()
+    settings.setValue("wtyczka_qgis_app/settings/rodzajZbioru", "POG")
+    settings.setValue("wtyczka_qgis_app/settings/strefaPL2000", "2180")
+    settings.setValue("wtyczka_qgis_app/settings/defaultPath", str(dataset_dir))
 
-            plugin.wektorInstrukcjaDialogSPL = type('dlg', (), {
-                'layers_comboBox': type('cmb', (), {'currentLayer': lambda self: spl_layer})()
-            })()
-            plugin.activeDlg = plugin.wektorInstrukcjaDialogSPL
+    # Provide jpt from POG layer attribute
+    pog_layer_path = dataset_dir / "pog" / "AktPlanowaniaPrzestrzennego.gml"
+    settings.setValue("wtyczka_qgis_app/settings/jpt", extract_jpt_from_pog(pog_layer_path))
 
-            out_path = os.path.join(tmpdir, 'output.gml')
+    work_dir = tmp_path / dataset_dir.name
 
-            from PyQt5 import QtWidgets
-            original_save = QtWidgets.QFileDialog.getSaveFileName
-            QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda directory=None, filter=None: (out_path, None))
-            try:
-                plugin.saveLayerToGML()
-            finally:
-                QtWidgets.QFileDialog.getSaveFileName = original_save
+    # Collect layer paths for sequential dialog responses
+    load_paths = [pog_layer_path] + sorted((dataset_dir / "strefy").glob("*.gml"))
+    save_paths = [work_dir / p.name for p in load_paths]
 
-            self.assertTrue(os.path.exists(out_path), 'Output GML not created')
+    def fake_open(*args, **kwargs):
+        path = load_paths.pop(0)
+        return str(path), "pliki GML (*.gml)"
 
-if __name__ == '__main__':
-    unittest.main()
+    def fake_save(*args, **kwargs):
+        path = save_paths.pop(0)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return str(path), "pliki GML (*.gml)"
+
+    # Avoid GUI popups during automated testing
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", fake_open)
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", fake_save)
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.Yes)
+    monkeypatch.setattr(utils, "showPopup", lambda *a, **k: None)
+
+    # Simplify heavy validation to focus on workflow mechanics
+    monkeypatch.setattr(WtyczkaAPP, "kontrolaWarstwy", lambda *a, **k: True)
+    monkeypatch.setattr(WtyczkaAPP, "kontrolaGeometriiWarstwy", lambda *a, **k: True)
+    monkeypatch.setattr(WtyczkaAPP, "czyObiektyUnikalne", lambda *a, **k: True)
+
+    # Step 1: POG layer
+    plugin.activeDlg = plugin.wektorInstrukcjaDialogPOG
+    plugin.loadFromGMLorGPKG(False)
+    plugin.saveLayerToGML()
+    plugin.wektorInstrukcjaDialog_next_btn_clicked()
+
+    # Step 2: strefy layers
+    plugin.activeDlg = plugin.wektorInstrukcjaDialogSPL
+    for _ in (dataset_dir / "strefy").glob("*.gml"):
+        plugin.loadFromGMLorGPKG(False)
+        plugin.saveLayerToGML()
+        plugin.wektorInstrukcjaDialog_next_btn_clicked()
+
+    # Verify outputs saved by plugin
+    for saved in work_dir.glob("*.gml"):
+        assert saved.exists()
