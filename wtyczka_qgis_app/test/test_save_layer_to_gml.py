@@ -10,6 +10,7 @@ import tempfile
 import processing
 from PyQt5.QtWidgets import QComboBox
 from qgis._core import QgsVectorLayer, QgsProject, QgsCoordinateReferenceSystem, QgsSettings
+from qgis._gui import QgsMapLayerComboBox
 
 # Allow running this test directly without relying on the test package.
 # As with ``test/__init__``, we need the parent of the plugin directory on
@@ -133,16 +134,13 @@ class SaveLayerToGmlTest(unittest.TestCase):
             self.assertTrue(app_layer.isValid(), 'AktPlanowaniaPrzestrzennego layer failed to load')
             self.assertTrue(spl_layer.isValid(), 'SPL layer failed to load')
 
-            # plugin.wektorInstrukcjaDialogPOG = type('dlg', (), {
-            #     'layers_comboBox': type('cmb', (), {'currentLayer': lambda self: app_layer})()
-            # })()
-            plugin.wektorInstrukcjaDialogPOG = type('dlg', (), {
-                'layers_comboBox': type('cmb', (), {'currentLayer': lambda self: app_layer})()
-            })()
+
             plugin.activeDlg = plugin.wektorInstrukcjaDialogPOG
             plugin.activeDlg.name = 'AktPlanowaniaPrzestrzennego'
-            plugin.activeDlg.layers_comboBox = QComboBox()
-            plugin.loadFromGMLorGPKG(False, app_gml)
+            plugin.activeDlg.layers_comboBox = QgsMapLayerComboBox()
+            add_lyr = plugin.loadFromGMLorGPKG(False, app_gml)
+            plugin.activeDlg.layers_comboBox.setCurrentText(add_lyr.name())
+            print(app_layer)
             out_path = os.path.join(tmpdir, 'output_pog.gml')
 
             from PyQt5 import QtWidgets
