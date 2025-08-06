@@ -115,8 +115,14 @@ class SaveLayerToGmlTest(unittest.TestCase):
             templates_dst = pathlib.Path(QgsApplication.qgisSettingsDirPath()) / 'python/plugins/wtyczka_qgis_app/modules/templates'
             shutil.copytree(templates_src, templates_dst, dirs_exist_ok=True)
 
+            # "/python/plugins/wtyczka_qgis_app/modules/app/A00_Granice_panstwa/A00_Granice_panstwa_bufor_300m.shp"
+            granice_src = pathlib.Path(self.plugin_dir, 'modules', 'app', 'A00_Granice_panstwa')
+            granice_dst = pathlib.Path(
+                QgsApplication.qgisSettingsDirPath()) / 'python/plugins/wtyczka_qgis_app/modules/app/A00_Granice_panstwa'
+            shutil.copytree(granice_src, granice_dst, dirs_exist_ok=True)
+
             app_layer = self.load_layer_from_file(app_gml)
-            plugin.loadFromGMLorGPKG(False)
+
             # print(f'crs {app_layer.crs().authid()}')
             # epsg = int(s.value('qgis_app2/settings/strefaPL2000'))
             # if not app_layer.crs().authid():
@@ -126,10 +132,16 @@ class SaveLayerToGmlTest(unittest.TestCase):
             self.assertTrue(app_layer.isValid(), 'AktPlanowaniaPrzestrzennego layer failed to load')
             self.assertTrue(spl_layer.isValid(), 'SPL layer failed to load')
 
+            # plugin.wektorInstrukcjaDialogPOG = type('dlg', (), {
+            #     'layers_comboBox': type('cmb', (), {'currentLayer': lambda self: app_layer})()
+            # })()
             plugin.wektorInstrukcjaDialogPOG = type('dlg', (), {
                 'layers_comboBox': type('cmb', (), {'currentLayer': lambda self: app_layer})()
             })()
             plugin.activeDlg = plugin.wektorInstrukcjaDialogPOG
+            plugin.activeDlg.name = 'AktPlanowaniaPrzestrzennego'
+            plugin.activeDlg.layers_co
+            plugin.loadFromGMLorGPKG(False, app_gml)
             out_path = os.path.join(tmpdir, 'output_pog.gml')
 
             from PyQt5 import QtWidgets
