@@ -18,11 +18,11 @@ import logging
 import types
 import os
 import atexit
-import pytest
+# import pytest
 
 # # # Skip entire module when QGIS is not installed – e.g. in CI environments
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-qgis = pytest.importorskip("qgis", reason="QGIS environment required")
+# os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# qgis = pytest.importorskip("qgis", reason="QGIS environment required")
 
 from qgis.core import QgsSettings, QgsApplication
 from qgis.PyQt.QtWidgets import QFileDialog, QMessageBox
