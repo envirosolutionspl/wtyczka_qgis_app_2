@@ -11,6 +11,7 @@ env:
   TEST_FUNCTION: test_run_qgis_tests.test_all
   DOCKER_IMAGE: qgis/qgis
 
+
 jobs:
   tests:
     runs-on: ubuntu-22.04
