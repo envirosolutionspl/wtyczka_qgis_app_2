@@ -1,0 +1,55 @@
+name: Tests 🎳
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  # Assign the version provided by 'workflow_dispatch' if available; otherwise, use the default.
+  PLUGIN_NAME: wtyczka_qgis_app
+  TEST_FUNCTION: test_run_qgis_tests.test_all
+  DOCKER_IMAGE: qgis/qgis
+
+
+jobs:
+  tests:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        qgis_version: [
+          "release-3_28",
+          "release-3_30",
+          "release-3_32",
+          "release-3_34",
+          "release-3_36"
+        ]
+    steps:
+    
+      - name: Checkout plugin code
+        uses: actions/checkout@v3
+        with:
+          path: plugin
+
+      # - name: Copy client files to the plugin directory
+      #   run: |
+      #     cp -r client/mergin plugin/Mergin
+
+      - name: Docker pull and create qgis-testing-environment
+        run: |
+          docker pull "$DOCKER_IMAGE":${{ matrix.qgis_version }}
+          docker run -d --name qgis-testing-environment -v "$GITHUB_WORKSPACE"/plugin:/tests_directory -e DISPLAY=:99 "$DOCKER_IMAGE":${{ matrix.qgis_version }}
+          # Wait for xvfb to finish starting
+          echo "Waiting for the docker...🐳..."
+          sleep 10
+          echo " done 🥩"
+
+      - name: Docker set up QGIS
+        run: |
+          docker exec qgis-testing-environment sh -c "qgis_setup.sh $PLUGIN_NAME"
+          docker exec qgis-testing-environment sh -c "rm -f /root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/$PLUGIN_NAME"
+          docker exec qgis-testing-environment sh -c "ln -s /tests_directory/$PLUGIN_NAME /root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/$PLUGIN_NAME"
+
+      - name: Docker run plugin tests
+        run: |
+          docker exec qgis-testing-environment sh -c "cd /tests_directory/$PLUGIN_NAME/test && qgis_testrunner.sh $TEST_FUNCTION"
