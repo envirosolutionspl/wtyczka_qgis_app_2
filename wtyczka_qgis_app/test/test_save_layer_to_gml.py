@@ -7,6 +7,7 @@ import pathlib
 import shutil
 import tempfile
 
+
 import processing
 from PyQt5.QtWidgets import QComboBox
 from qgis._core import QgsVectorLayer, QgsProject, QgsCoordinateReferenceSystem, QgsSettings
@@ -17,15 +18,16 @@ from qgis._gui import QgsMapLayerComboBox
 # ``sys.path`` so Python can resolve ``wtyczka_qgis_app``.
 PLUGIN_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 PLUGIN_PARENT = os.path.dirname(PLUGIN_ROOT)
-for path in (PLUGIN_PARENT, PLUGIN_ROOT):
+DATA_ROOT = pathlib.Path(__file__).parent / "data"
+for path in (PLUGIN_PARENT, PLUGIN_ROOT, DATA_ROOT):
     if path not in sys.path:
         sys.path.insert(0, path)
 
 class SaveLayerToGmlTest(unittest.TestCase):
     def setUp(self):
         self.plugin_dir = os.path.dirname(os.path.dirname(__file__))
-        self.app_gml = os.path.join(self.plugin_dir, 'test', 'data', '1' , 'pog', 'AktPlanowaniaPrzestrzennego.gml')
-        self.spl_gml = os.path.join(self.plugin_dir, 'test', 'data', '1' , 'strefy', 'StrefaPlanistyczna.gml')
+        self.app_gml = os.path.join(self.plugin_dir, 'test', 'data', '1', 'pog', 'AktPlanowaniaPrzestrzennego.gml')
+        self.spl_gml = os.path.join(self.plugin_dir, 'test', 'data', '1', 'strefy', 'StrefaPlanistyczna.gml')
 
     def load_layer_from_file(self, path):
         """
@@ -42,31 +44,9 @@ class SaveLayerToGmlTest(unittest.TestCase):
             dest_gfs = src.with_suffix(".gfs")
             if template.exists() and not dest_gfs.exists():
                 shutil.copyfile(str(template), str(dest_gfs))
-
-        # Initial load
         layer = QgsVectorLayer(str(src), name, "ogr")
         if not layer.isValid():
             return layer
-
-        # Assign and reproject to target CRS from plugin settings
-        settings = QgsSettings()
-        # target_epsg = settings.value("qgis_app2/settings/strefaPL2000", "")
-        # if target_epsg:
-        #     # Reproject layer in-memory
-        #     reprojected = processing.run(
-        #         'native:reprojectlayer',
-        #         {
-        #             'INPUT': layer,
-        #             'TARGET_CRS': QgsCoordinateReferenceSystem(f"EPSG:{target_epsg}"),
-        #             'OUTPUT': 'memory:'
-        #         }
-        #     )['OUTPUT']
-        #     # Ensure CRS and name
-        #     reprojected.setCrs(QgsCoordinateReferenceSystem(f"EPSG:{target_epsg}"))
-        #     reprojected.setName(name)
-        #     layer = reprojected
-
-        # Add layer to project
         QgsProject.instance().addMapLayer(layer)
         return layer
 
@@ -125,10 +105,6 @@ class SaveLayerToGmlTest(unittest.TestCase):
 
             app_layer = self.load_layer_from_file(app_gml)
 
-            # print(f'crs {app_layer.crs().authid()}')
-            # epsg = int(s.value('qgis_app2/settings/strefaPL2000'))
-            # if not app_layer.crs().authid():
-            #     app_layer.setCrs(QgsCoordinateReferenceSystem.fromEpsgId(epsg))
             spl_layer = self.load_layer_from_file(spl_gml)
 
             self.assertTrue(app_layer.isValid(), 'AktPlanowaniaPrzestrzennego layer failed to load')
@@ -140,7 +116,6 @@ class SaveLayerToGmlTest(unittest.TestCase):
             plugin.activeDlg.layers_comboBox = QgsMapLayerComboBox()
             add_lyr = plugin.loadFromGMLorGPKG(False, app_gml)
             plugin.activeDlg.layers_comboBox.setCurrentText(add_lyr.name())
-            print(app_layer)
             out_path = os.path.join(tmpdir, 'output_pog.gml')
 
             from PyQt5 import QtWidgets
@@ -153,10 +128,14 @@ class SaveLayerToGmlTest(unittest.TestCase):
 
             self.assertTrue(os.path.exists(out_path), 'Output GML not created')
 
-            plugin.wektorInstrukcjaDialogSPL = type('dlg', (), {
-                'layers_comboBox': type('cmb', (), {'currentLayer': lambda self: spl_layer})()
-            })()
+            # plugin.wektorInstrukcjaDialogSPL = type('dlg', (), {
+            #     'layers_comboBox': type('cmb', (), {'currentLayer': lambda self: spl_layer})()
+            # })()
             plugin.activeDlg = plugin.wektorInstrukcjaDialogSPL
+            plugin.activeDlg.name = 'StrefaPlanistyczna'
+            plugin.activeDlg.layers_comboBox = QgsMapLayerComboBox()
+            spl_lyr = plugin.loadFromGMLorGPKG(False, spl_gml)
+            plugin.activeDlg.layers_comboBox.setCurrentText(spl_lyr.name())
 
             out_path = os.path.join(tmpdir, 'output_spl.gml')
 
