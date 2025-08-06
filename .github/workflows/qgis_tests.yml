@@ -11,11 +11,6 @@ env:
   TEST_FUNCTION: test_run_qgis_tests.test_all
   DOCKER_IMAGE: qgis/qgis
 
-env:
-  # Assign the version provided by 'workflow_dispatch' if available; otherwise, use the default.
-  PLUGIN_NAME: wtyczka_qgis_app
-  TEST_FUNCTION: python -m unittest
-  DOCKER_IMAGE: qgis/qgis
 
 jobs:
   tests:
@@ -23,8 +18,11 @@ jobs:
     strategy:
       matrix:
         qgis_version: [
-          "release-3_34",
           "release-3_28",
+          "release-3_30",
+          "release-3_32",
+          "release-3_34",
+          "release-3_36"
         ]
     steps:
     
