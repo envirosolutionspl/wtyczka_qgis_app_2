@@ -19,7 +19,7 @@ from qgis.core import QgsSettings
 from shutil import copyfile
 from osgeo import ogr
 from qgis import processing
-from processing.core.Processing import Processing
+# from processing.core.Processing import Processing
 from PyQt5.QtCore import QSettings, QDateTime, QDate
 from ..tworzenieOUZ.dialogs import TworzenieOUZDialog
 from PyQt5.QtGui import QColor
@@ -59,7 +59,7 @@ class AppModule(BaseModule):
 
 
     def __init__(self, iface):
-        Processing.initialize()
+        # Processing.initialize()
         
         self.tableView = None
         self.iface = iface
@@ -1582,7 +1582,7 @@ class AppModule(BaseModule):
     def loadFromGMLorGPKG(self, analizy, path = False):
         global informacjaOgolna
         
-        Processing.initialize()
+        processing.initialize()
         s = QgsSettings()
         defaultPath = s.value("qgis_app2/settings/defaultPath", "/")
         epsg_code = s.value("qgis_app2/settings/strefaPL2000", "/")
@@ -1627,6 +1627,7 @@ class AppModule(BaseModule):
             return
         
         ds = ogr.Open(file)
+        print(f'file {file}')
         warstwy = [x.GetName() for x in ds]
         
         activeDlgname = self.activeDlg.name
@@ -1989,10 +1990,11 @@ class AppModule(BaseModule):
                 QApplication.restoreOverrideCursor()
                 showPopup("Wczytaj warstwę","Poprawnie wczytano warstwę " + layerName + ".")
         QApplication.restoreOverrideCursor()
+        return gkpg
 
 
     def saveLayerToGML(self):
-        Processing.initialize()
+        processing.initialize()
         s = QgsSettings()
         defaultPath = s.value("qgis_app2/settings/defaultPath", "/")
         
@@ -2245,7 +2247,7 @@ class AppModule(BaseModule):
 
 
     def saveLayerToGML_OUZ(self, layer):
-        Processing.initialize()
+        processing.initialize()
         global layer_OUZ
         layer_OUZ = layer
         self.saveLayerToGML()
