@@ -19,7 +19,7 @@ from qgis.core import QgsSettings
 from shutil import copyfile
 from osgeo import ogr
 from qgis import processing
-# from processing.core.Processing import Processing
+from processing.core.Processing import Processing
 from PyQt5.QtCore import QSettings, QDateTime, QDate
 from ..tworzenieOUZ.dialogs import TworzenieOUZDialog
 from PyQt5.QtGui import QColor
@@ -59,7 +59,7 @@ class AppModule(BaseModule):
 
 
     def __init__(self, iface):
-        # Processing.initialize()
+        Processing.initialize()
         
         self.tableView = None
         self.iface = iface
@@ -1337,7 +1337,7 @@ class AppModule(BaseModule):
 
     def aggregateLayer(self, layer):
         # Aggregate
-        processing.initialize()
+        Processing.initialize()
         alg_params = {
             'AGGREGATES': [],
             'GROUP_BY': 'NULL',
@@ -1582,7 +1582,7 @@ class AppModule(BaseModule):
     def loadFromGMLorGPKG(self, analizy, path = False):
         global informacjaOgolna
         
-        processing.initialize()
+        Processing.initialize()
         s = QgsSettings()
         defaultPath = s.value("qgis_app2/settings/defaultPath", "/")
         epsg_code = s.value("qgis_app2/settings/strefaPL2000", "/")
@@ -1994,7 +1994,7 @@ class AppModule(BaseModule):
 
 
     def saveLayerToGML(self):
-        processing.initialize()
+        Processing.initialize()
         s = QgsSettings()
         defaultPath = s.value("qgis_app2/settings/defaultPath", "/")
         
@@ -2247,7 +2247,7 @@ class AppModule(BaseModule):
 
 
     def saveLayerToGML_OUZ(self, layer):
-        processing.initialize()
+        Processing.initialize()
         global layer_OUZ
         layer_OUZ = layer
         self.saveLayerToGML()
