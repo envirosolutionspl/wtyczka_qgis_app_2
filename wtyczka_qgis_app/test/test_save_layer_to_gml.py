@@ -145,10 +145,12 @@ class SaveLayerToGmlTest(unittest.TestCase):
             s.setValue("qgis_app2/settings/jpt", jpt_value)
             s.setValue("qgis_app2/settings/strefaPL2000", get_crs_from_jpt(jpt_value[:4]))
 
-            gfs_source = os.path.join(self.plugin_dir, 'GFS', 'template.gfs')
+            gfs_source = pathlib.Path(self.plugin_dir) / 'GFS' / 'template.gfs'
             gfs_target_dir = pathlib.Path(QgsApplication.qgisSettingsDirPath()) / 'python/plugins/wtyczka_qgis_app/GFS'
             gfs_target_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(gfs_source, gfs_target_dir / 'template.gfs')
+            gfs_target = gfs_target_dir / 'template.gfs'
+            if gfs_source.resolve() != gfs_target.resolve():
+                shutil.copyfile(gfs_source, gfs_target)
 
             templates_src = pathlib.Path(self.plugin_dir, 'modules', 'templates')
             templates_dst = pathlib.Path(
@@ -165,7 +167,7 @@ class SaveLayerToGmlTest(unittest.TestCase):
             plugin.activeDlg = plugin.wektorInstrukcjaDialogPOG
             plugin.activeDlg.name = 'AktPlanowaniaPrzestrzennego'
             plugin.activeDlg.layers_comboBox = QgsMapLayerComboBox()
-            add_lyr = plugin.loadFromGMLorGPKG(False, app_gml)
+            add_lyr = plugin.loadFromGMLorGPKG(path=app_gml)
             plugin.activeDlg.layers_comboBox.setCurrentText(add_lyr.name())
 
             out_path = os.path.join(tmpdir, f'output_pog_{case.name}.gml')
@@ -182,7 +184,7 @@ class SaveLayerToGmlTest(unittest.TestCase):
                         plugin.activeDlg = plugin.wektorInstrukcjaDialogSPL
                         plugin.activeDlg.name = 'StrefaPlanistyczna'
                         plugin.activeDlg.layers_comboBox = QgsMapLayerComboBox()
-                        spl_lyr = plugin.loadFromGMLorGPKG(False, spl_gml)
+                        spl_lyr = plugin.loadFromGMLorGPKG(path=spl_gml)
                         plugin.activeDlg.layers_comboBox.setCurrentText(spl_lyr.name())
 
                         out_path = os.path.join(
