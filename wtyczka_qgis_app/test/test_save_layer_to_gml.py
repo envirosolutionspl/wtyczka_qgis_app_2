@@ -8,8 +8,8 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 
-from qgis._core import QgsVectorLayer, QgsProject
-from qgis._gui import QgsMapLayerComboBox
+from qgis.core import QgsVectorLayer, QgsProject, QgsApplication
+from qgis.gui import QgsMapLayerComboBox
 
 # Allow running this test directly without relying on the test package.
 # As with ``test/__init__``, we need the parent of the plugin directory on
@@ -67,12 +67,13 @@ class SaveLayerToGmlTest(unittest.TestCase):
         return layer
 
     def test_save_layer_to_gml(self):
-        try:
-            from qgis.core import QgsProject, QgsSettings, QgsApplication
-            from qgis.testing import start_app
-            start_app()
-        except Exception:
-            self.skipTest('QGIS environment is not available')
+        from qgis.core import QgsProject, QgsSettings, QgsApplication
+        if QgsApplication.instance() is None:
+            try:
+                from qgis.testing import start_app
+                start_app()
+            except Exception:
+                self.skipTest('QGIS environment is not available')
 
         from wtyczka_qgis_app.modules.app.wtyczka_app import AppModule
         try:
