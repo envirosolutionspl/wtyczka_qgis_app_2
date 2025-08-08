@@ -1578,9 +1578,27 @@ class AppModule(BaseModule):
         przestrzenNazw_lineEdit.textChanged.connect(lambda: updateIdIPP())
         wersjaId_lineEdit.textChanged.connect(lambda: updateIdIPP())
 
+    def loadFromGMLorGPKG(self, analizy=False, path=None):
+        """Load data from a GML or GPKG file.
 
-    def loadFromGMLorGPKG(self, analizy, path = False):
+        Parameters
+        ----------
+        analizy : bool, optional
+            Whether the method is invoked from the analysis module.  Defaults
+            to ``False``.
+        path : str or Path, optional
+            Direct path to a file that should be loaded.  When not provided the
+            user is prompted with a file dialog.  For backwards compatibility
+            the method also accepts a single positional path argument; in that
+            case ``analizy`` is assumed to be ``False``.
+        """
         global informacjaOgolna
+
+        # Support calls like ``loadFromGMLorGPKG(path)`` where the first
+        # argument is the file path instead of the analysis flag.
+        if path is None and isinstance(analizy, (str, pathlib.Path)):
+            path = analizy
+            analizy = False
         
         processing.initialize()
         s = QgsSettings()
