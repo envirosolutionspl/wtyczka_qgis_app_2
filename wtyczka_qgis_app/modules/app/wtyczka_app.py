@@ -1337,7 +1337,7 @@ class AppModule(BaseModule):
 
     def aggregateLayer(self, layer):
         # Aggregate
-        processing.initialize()
+        Processing.initialize()
         alg_params = {
             'AGGREGATES': [],
             'GROUP_BY': 'NULL',
