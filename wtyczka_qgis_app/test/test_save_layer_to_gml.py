@@ -80,6 +80,14 @@ class SaveLayerToGmlTest(unittest.TestCase):
     def setUp(self):
         self.plugin_dir = os.path.dirname(os.path.dirname(__file__))
         self.data_root = pathlib.Path(self.plugin_dir) / "test" / "data"
+        from PyQt5 import QtWidgets
+        self._orig_msgbox_exec = QtWidgets.QMessageBox.exec_
+        QtWidgets.QMessageBox.exec_ = lambda self: QtWidgets.QMessageBox.Ok
+
+    def tearDown(self):  # noqa: D401 - default teardown
+        """Przywraca oryginalną metodę exec_ QMessageBox."""
+        from PyQt5 import QtWidgets
+        QtWidgets.QMessageBox.exec_ = self._orig_msgbox_exec
 
     # ---------- util: wczytanie warstwy (bez asercji)
     def _load_layer(self, path: pathlib.Path) -> QgsVectorLayer:
