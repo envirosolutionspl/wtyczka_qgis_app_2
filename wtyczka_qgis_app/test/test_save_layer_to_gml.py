@@ -31,6 +31,7 @@ warnings.simplefilter("always", category=RuntimeWarning)
 PLUGIN_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 PLUGIN_PARENT = os.path.dirname(PLUGIN_ROOT)
 DATA_ROOT = pathlib.Path(__file__).parent / "data"
+
 for p in (PLUGIN_PARENT, PLUGIN_ROOT, DATA_ROOT):
     if p not in sys.path:
         sys.path.insert(0, p)
@@ -70,6 +71,7 @@ def safe_copy(src: pathlib.Path, dst: pathlib.Path, ctx: str) -> None:
 
 
 # ---------------------------------------------------- TEST
+
 class SaveLayerToGmlTest(unittest.TestCase):
     # -------- statystyki
     load_ok: list[str] = []
