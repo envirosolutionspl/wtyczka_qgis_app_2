@@ -94,7 +94,6 @@ class SaveLayerToGmlTest(unittest.TestCase):
         if layer.isValid():
             QgsProject.instance().addMapLayer(layer)
 
-        # if 
         return layer
 
     # ---------- util: bezpieczne wywołanie loadFromGMLorGPKG
