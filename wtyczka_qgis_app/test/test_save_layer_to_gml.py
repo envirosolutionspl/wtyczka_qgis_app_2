@@ -93,6 +93,8 @@ class SaveLayerToGmlTest(unittest.TestCase):
         layer = QgsVectorLayer(str(path), path.stem, "ogr")
         if layer.isValid():
             QgsProject.instance().addMapLayer(layer)
+
+        # if 
         return layer
 
     # ---------- util: bezpieczne wywołanie loadFromGMLorGPKG
