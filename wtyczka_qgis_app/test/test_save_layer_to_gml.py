@@ -1,6 +1,7 @@
-"""Unit test – zapis warstw do GML z pełną tolerancją błędów.
+"""
+Unit test – zapis warstw do GML z pełną tolerancją błędów.
 
-* Działa na wszystkich katalogach w  test/data.
+* Działa na wszystkich katalogach w test/data.
 * Błędy w danych lub w wtyczce → tylko `warnings.warn()`.
 * Żadnych `AssertionError`, `self.fail()` ani `skipTest()` (oprócz braku QGIS).
 * Na końcu drukuje podsumowanie wczytań/zapisów.
@@ -34,6 +35,7 @@ DATA_ROOT = pathlib.Path(__file__).parent / "data"
 for p in (PLUGIN_PARENT, PLUGIN_ROOT, DATA_ROOT):
     if p not in sys.path:
         sys.path.insert(0, p)
+
 
 # ---------------------------------------------------- HELPERY
 def extract_jpt_from_pog(pog_gml: pathlib.Path) -> str:
@@ -77,17 +79,35 @@ class SaveLayerToGmlTest(unittest.TestCase):
     save_ok: list[str] = []
     save_fail: list[tuple[str, str]] = []
 
+    # --- uchwyty do oryginałów/stubów Qt
+    _qtw1 = None  # PyQt5.QtWidgets
+    _qtw2 = None  # qgis.PyQt.QtWidgets
+    _orig_msgbox_exec_1 = None
+    _orig_msgbox_exec_2 = None
+
     def setUp(self):
         self.plugin_dir = os.path.dirname(os.path.dirname(__file__))
         self.data_root = pathlib.Path(self.plugin_dir) / "test" / "data"
-        from PyQt5 import QtWidgets
-        self._orig_msgbox_exec = QtWidgets.QMessageBox.exec_
-        QtWidgets.QMessageBox.exec_ = lambda self: QtWidgets.QMessageBox.Ok
+
+        # --- patch QMessageBox.exec_ w obu przestrzeniach nazw
+        from PyQt5 import QtWidgets as QtW1
+        from qgis.PyQt import QtWidgets as QtW2
+        self.__class__._qtw1 = QtW1
+        self.__class__._qtw2 = QtW2
+
+        self.__class__._orig_msgbox_exec_1 = QtW1.QMessageBox.exec_
+        self.__class__._orig_msgbox_exec_2 = QtW2.QMessageBox.exec_
+
+        # zawsze udawaj "OK" żeby dialogi nie blokowały
+        QtW1.QMessageBox.exec_ = lambda self: QtW1.QMessageBox.Ok
+        QtW2.QMessageBox.exec_ = lambda self: QtW2.QMessageBox.Ok
 
     def tearDown(self):  # noqa: D401 - default teardown
         """Przywraca oryginalną metodę exec_ QMessageBox."""
-        from PyQt5 import QtWidgets
-        QtWidgets.QMessageBox.exec_ = self._orig_msgbox_exec
+        if self._qtw1 and self._orig_msgbox_exec_1:
+            self._qtw1.QMessageBox.exec_ = self._orig_msgbox_exec_1
+        if self._qtw2 and self._orig_msgbox_exec_2:
+            self._qtw2.QMessageBox.exec_ = self._orig_msgbox_exec_2
 
     # ---------- util: wczytanie warstwy (bez asercji)
     def _load_layer(self, path: pathlib.Path) -> QgsVectorLayer:
@@ -115,22 +135,36 @@ class SaveLayerToGmlTest(unittest.TestCase):
             self.__class__.load_fail.append((ctx, str(exc)))
             return None
 
-    # ---------- util: bezpieczny zapis GML
-    def _safe_save(self, QtWidgets, out_path: pathlib.Path, plugin, ctx: str) -> bool:
-        orig = QtWidgets.QFileDialog.getSaveFileName
-        QtWidgets.QFileDialog.getSaveFileName = staticmethod(lambda *_a, **_kw: (str(out_path), None))
+    # ---------- util: bezpieczny zapis GML (patchuje QFileDialog w PyQt5 i qgis.PyQt)
+    def _safe_save(self, out_path: pathlib.Path, plugin, ctx: str) -> bool:
+        from PyQt5 import QtWidgets as QtW1
+        from qgis.PyQt import QtWidgets as QtW2
+
+        orig1 = QtW1.QFileDialog.getSaveFileName
+        orig2 = QtW2.QFileDialog.getSaveFileName
+
+        def _fake_get_save_name(*_a, **_kw):
+            # zwróć ścieżkę i przykładowy filtr – niektóre implementacje na nim polegają
+            return str(out_path), "GML (*.gml)"
+
         try:
+            QtW1.QFileDialog.getSaveFileName = staticmethod(_fake_get_save_name)
+            QtW2.QFileDialog.getSaveFileName = staticmethod(_fake_get_save_name)
+
             plugin.saveLayerToGML()
         except Exception as exc:  # noqa: BLE001
             warnings.warn(f"{ctx}: saveLayerToGML() wyjątek: {exc}", RuntimeWarning)
             self.__class__.save_fail.append((ctx, str(exc)))
             return False
         finally:
-            QtWidgets.QFileDialog.getSaveFileName = orig
+            QtW1.QFileDialog.getSaveFileName = orig1
+            QtW2.QFileDialog.getSaveFileName = orig2
+
         if not out_path.exists():
             warnings.warn(f"{ctx}: plik {out_path} nie powstał", RuntimeWarning)
             self.__class__.save_fail.append((ctx, "plik nie powstał"))
             return False
+
         self.__class__.save_ok.append(ctx)
         return True
 
@@ -152,8 +186,10 @@ class SaveLayerToGmlTest(unittest.TestCase):
         if iface is None:
             class DummyIface:
                 class Bar:
-                    def pushSuccess(self, *_a, **_kw): pass
-                def messageBar(self): return self.Bar()
+                    def pushSuccess(self, *_a, **_kw):
+                        pass
+                def messageBar(self):
+                    return self.Bar()
             iface = DummyIface()
 
         from wtyczka_qgis_app.modules.app.wtyczka_app import AppModule
@@ -167,7 +203,7 @@ class SaveLayerToGmlTest(unittest.TestCase):
 
                 pog_tmp = shutil.copy(pog_src, tmpdir / pog_src.name)
 
-                # ---- ustawienia (nawet jeśli JPT się nie uda, nie przerywamy)
+                # ---- ustawienia (nie przerywamy przy błędzie JPT)
                 settings = QgsSettings()
                 settings.setValue("qgis_app2/settings/defaultPath", str(tmpdir))
                 try:
@@ -197,13 +233,14 @@ class SaveLayerToGmlTest(unittest.TestCase):
                 lyr_pog = self._safe_plugin_load(plugin, pog_tmp, f"{case.name}: POG")
                 if lyr_pog and lyr_pog.isValid():
                     plugin.activeDlg.layers_comboBox.setCurrentText(lyr_pog.name())
-                    from PyQt5 import QtWidgets as QtW
                     out_pog = tmpdir / f"output_pog_{case.name}.gml"
-                    self._safe_save(QtW, out_pog, plugin, f"{case.name}: zapis POG")
+                    self._safe_save(out_pog, plugin, f"{case.name}: zapis POG")
+                QgsProject.instance().removeAllMapLayers()
 
                 # ======================= SPL =================================
                 for spl_src in strefy_dir.glob("*.gml"):
                     with self.subTest(folder=case.name, file=spl_src.name):
+                        QgsProject.instance().removeAllMapLayers()
                         spl_tmp = shutil.copy(spl_src, tmpdir / spl_src.name)
 
                         plugin_spl = AppModule(iface)
@@ -211,14 +248,14 @@ class SaveLayerToGmlTest(unittest.TestCase):
                         plugin_spl.activeDlg.name = "StrefaPlanistyczna"
                         plugin_spl.activeDlg.layers_comboBox = QgsMapLayerComboBox()
 
-                        lyr_spl = self._safe_plugin_load(plugin_spl, spl_tmp,
-                                                         f"{case.name}/{spl_src.name}: SPL")
+                        lyr_spl = self._safe_plugin_load(
+                            plugin_spl, spl_tmp, f"{case.name}/{spl_src.name}: SPL"
+                        )
                         if lyr_spl and lyr_spl.isValid():
                             plugin_spl.activeDlg.layers_comboBox.setCurrentText(lyr_spl.name())
-                            from PyQt5 import QtWidgets as QtW
                             out_spl = tmpdir / f"output_spl_{case.name}_{spl_src.stem}.gml"
-                            self._safe_save(QtW, out_spl, plugin_spl,
-                                            f"{case.name}/{spl_src.name}: zapis SPL")
+                            self._safe_save(out_spl, plugin_spl, f"{case.name}/{spl_src.name}: zapis SPL")
+                        QgsProject.instance().removeAllMapLayers()
 
     # ---------- PODSUMOWANIE
     @classmethod
