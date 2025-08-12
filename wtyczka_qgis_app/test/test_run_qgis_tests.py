@@ -30,6 +30,7 @@ import importlib.util
 import pathlib
 import sys
 import unittest
+import os
 
 PLUGIN_DIR = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir))# pathlib.Path(r"C:\Users\ms1\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\wtyczka_qgis_app")
 TEST_PATH = os.path.join(PLUGIN_DIR, "test" , "test_save_layer_to_gml.py")
