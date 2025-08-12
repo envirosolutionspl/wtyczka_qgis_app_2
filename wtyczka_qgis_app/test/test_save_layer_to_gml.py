@@ -88,6 +88,54 @@ class SaveLayerToGmlTest(unittest.TestCase):
     def setUp(self):
         self.plugin_dir = os.path.dirname(os.path.dirname(__file__))
         self.data_root = pathlib.Path(self.plugin_dir) / "test" / "data"
+        from PyQt5 import QtWidgets
+        self._orig_msgbox_exec = QtWidgets.QMessageBox.exec_
+        QtWidgets.QMessageBox.exec_ = lambda self: QtWidgets.QMessageBox.Ok
+
+    def tearDown(self):  # noqa: D401 - default teardown
+        """Przywraca oryginalną metodę exec_ QMessageBox."""
+        from PyQt5 import QtWidgets
+        QtWidgets.QMessageBox.exec_ = self._orig_msgbox_exec
+
+        # --- patch QMessageBox.exec_ w obu przestrzeniach nazw
+        from PyQt5 import QtWidgets as QtW1
+        from qgis.PyQt import QtWidgets as QtW2
+        self.__class__._qtw1 = QtW1
+        self.__class__._qtw2 = QtW2
+
+        self.__class__._orig_msgbox_exec_1 = QtW1.QMessageBox.exec_
+        self.__class__._orig_msgbox_exec_2 = QtW2.QMessageBox.exec_
+
+        # zawsze udawaj "OK" żeby dialogi nie blokowały
+        QtW1.QMessageBox.exec_ = lambda self: QtW1.QMessageBox.Ok
+        QtW2.QMessageBox.exec_ = lambda self: QtW2.QMessageBox.Ok
+
+    def tearDown(self):  # noqa: D401 - default teardown
+        """Przywraca oryginalną metodę exec_ QMessageBox."""
+        if self._qtw1 and self._orig_msgbox_exec_1:
+            self._qtw1.QMessageBox.exec_ = self._orig_msgbox_exec_1
+        if self._qtw2 and self._orig_msgbox_exec_2:
+            self._qtw2.QMessageBox.exec_ = self._orig_msgbox_exec_2
+
+        # --- patch QMessageBox.exec_ w obu przestrzeniach nazw
+        from PyQt5 import QtWidgets as QtW1
+        from qgis.PyQt import QtWidgets as QtW2
+        self.__class__._qtw1 = QtW1
+        self.__class__._qtw2 = QtW2
+
+        self.__class__._orig_msgbox_exec_1 = QtW1.QMessageBox.exec_
+        self.__class__._orig_msgbox_exec_2 = QtW2.QMessageBox.exec_
+
+        # zawsze udawaj "OK" żeby dialogi nie blokowały
+        QtW1.QMessageBox.exec_ = lambda self: QtW1.QMessageBox.Ok
+        QtW2.QMessageBox.exec_ = lambda self: QtW2.QMessageBox.Ok
+
+    def tearDown(self):  # noqa: D401 - default teardown
+        """Przywraca oryginalną metodę exec_ QMessageBox."""
+        if self._qtw1 and self._orig_msgbox_exec_1:
+            self._qtw1.QMessageBox.exec_ = self._orig_msgbox_exec_1
+        if self._qtw2 and self._orig_msgbox_exec_2:
+            self._qtw2.QMessageBox.exec_ = self._orig_msgbox_exec_2
 
         # --- patch QMessageBox.exec_ w obu przestrzeniach nazw
         from qgis.PyQt import QtWidgets as QtW1
