@@ -1337,7 +1337,7 @@ class AppModule(BaseModule):
 
     def aggregateLayer(self, layer):
         # Aggregate
-        processing.initialize()
+        Processing.initialize()
         alg_params = {
             'AGGREGATES': [],
             'GROUP_BY': 'NULL',
@@ -1578,9 +1578,27 @@ class AppModule(BaseModule):
         przestrzenNazw_lineEdit.textChanged.connect(lambda: updateIdIPP())
         wersjaId_lineEdit.textChanged.connect(lambda: updateIdIPP())
 
+    def loadFromGMLorGPKG(self, analizy=False, path=None):
+        """Load data from a GML or GPKG file.
 
-    def loadFromGMLorGPKG(self, analizy):
+        Parameters
+        ----------
+        analizy : bool, optional
+            Whether the method is invoked from the analysis module.  Defaults
+            to ``False``.
+        path : str or Path, optional
+            Direct path to a file that should be loaded.  When not provided the
+            user is prompted with a file dialog.  For backwards compatibility
+            the method also accepts a single positional path argument; in that
+            case ``analizy`` is assumed to be ``False``.
+        """
         global informacjaOgolna
+
+        # Support calls like ``loadFromGMLorGPKG(path)`` where the first
+        # argument is the file path instead of the analysis flag.
+        if path is None and isinstance(analizy, (str, pathlib.Path)):
+            path = analizy
+            analizy = False
         
         Processing.initialize()
         s = QgsSettings()
@@ -1616,13 +1634,18 @@ class AppModule(BaseModule):
                       "Wtyczka umożliwia wczytanie także niepoprawnych danych, aby umożliwić ich naprawienie. Rekomendujemy, aby plik sprawdzić w Przeglądarce danych planistycznych.")
             informacjaOgolna = True
         
-        file, format = QFileDialog.getOpenFileName(directory=defaultPath,filter = "pliki GML (*.gml);; pliki GeoPackage (*.gpkg);")
-        file = str(file)
+        if not path:
+            file, format = QFileDialog.getOpenFileName(directory=defaultPath,filter = "pliki GML (*.gml);; pliki GeoPackage (*.gpkg);")
+            file = str(file)
+        else:
+            file = path
+            format = 'pliki GML (*.gml)'
         
         if not file:
             return
         
         ds = ogr.Open(file)
+
         warstwy = [x.GetName() for x in ds]
         
         activeDlgname = self.activeDlg.name
@@ -1966,6 +1989,7 @@ class AppModule(BaseModule):
                         if layerName == 'ObszarZabudowySrodmiejskiej':
                             self.dodajStylOpartyORegulach(gkpg, subNamesOZS[n])
                 if activeDlgname != 'PytanieAppDialog':
+
                     self.activeDlg.layers_comboBox.setCurrentText(layerName)
                 self.iface.messageBar().pushSuccess("Wczytanie warstwy:","Wczytano warstwę.")
                 
@@ -1984,6 +2008,8 @@ class AppModule(BaseModule):
                 QApplication.restoreOverrideCursor()
                 showPopup("Wczytaj warstwę","Poprawnie wczytano warstwę " + layerName + ".")
         QApplication.restoreOverrideCursor()
+        return gkpg
+
 
 
     def saveLayerToGML(self):
