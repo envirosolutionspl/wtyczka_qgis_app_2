@@ -117,46 +117,6 @@ class SaveLayerToGmlTest(unittest.TestCase):
         if self._qtw2 and self._orig_msgbox_exec_2:
             self._qtw2.QMessageBox.exec_ = self._orig_msgbox_exec_2
 
-        # --- patch QMessageBox.exec_ w obu przestrzeniach nazw
-        from PyQt5 import QtWidgets as QtW1
-        from qgis.PyQt import QtWidgets as QtW2
-        self.__class__._qtw1 = QtW1
-        self.__class__._qtw2 = QtW2
-
-        self.__class__._orig_msgbox_exec_1 = QtW1.QMessageBox.exec_
-        self.__class__._orig_msgbox_exec_2 = QtW2.QMessageBox.exec_
-
-        # zawsze udawaj "OK" żeby dialogi nie blokowały
-        QtW1.QMessageBox.exec_ = lambda self: QtW1.QMessageBox.Ok
-        QtW2.QMessageBox.exec_ = lambda self: QtW2.QMessageBox.Ok
-
-    def tearDown(self):  # noqa: D401 - default teardown
-        """Przywraca oryginalną metodę exec_ QMessageBox."""
-        if self._qtw1 and self._orig_msgbox_exec_1:
-            self._qtw1.QMessageBox.exec_ = self._orig_msgbox_exec_1
-        if self._qtw2 and self._orig_msgbox_exec_2:
-            self._qtw2.QMessageBox.exec_ = self._orig_msgbox_exec_2
-
-        # --- patch QMessageBox.exec_ w obu przestrzeniach nazw
-        from qgis.PyQt import QtWidgets as QtW1
-        from qgis.PyQt import QtWidgets as QtW2
-        self.__class__._qtw1 = QtW1
-        self.__class__._qtw2 = QtW2
-
-        self.__class__._orig_msgbox_exec_1 = QtW1.QMessageBox.exec_
-        self.__class__._orig_msgbox_exec_2 = QtW2.QMessageBox.exec_
-
-        # zawsze udawaj "OK" żeby dialogi nie blokowały
-        QtW1.QMessageBox.exec_ = lambda self: QtW1.QMessageBox.Ok
-        QtW2.QMessageBox.exec_ = lambda self: QtW2.QMessageBox.Ok
-
-    def tearDown(self):  # noqa: D401 - default teardown
-        """Przywraca oryginalną metodę exec_ QMessageBox."""
-        if self._qtw1 and self._orig_msgbox_exec_1:
-            self._qtw1.QMessageBox.exec_ = self._orig_msgbox_exec_1
-        if self._qtw2 and self._orig_msgbox_exec_2:
-            self._qtw2.QMessageBox.exec_ = self._orig_msgbox_exec_2
-
     # ---------- util: wczytanie warstwy (bez asercji)
     def _load_layer(self, path: pathlib.Path) -> QgsVectorLayer:
         if path.suffix.lower() == ".gml":
@@ -185,7 +145,7 @@ class SaveLayerToGmlTest(unittest.TestCase):
 
     # ---------- util: bezpieczny zapis GML (patchuje QFileDialog w PyQt5 i qgis.PyQt)
     def _safe_save(self, out_path: pathlib.Path, plugin, ctx: str) -> bool:
-        from qgis.PyQt import QtWidgets as QtW1
+        from PyQt5 import QtWidgets as QtW1
         from qgis.PyQt import QtWidgets as QtW2
 
         orig1 = QtW1.QFileDialog.getSaveFileName
