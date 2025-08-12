@@ -7,7 +7,7 @@ on:
 
 env:
   PLUGIN_NAME: wtyczka_qgis_app
-  TEST_FUNCTION: test_run_qgis_tests.test_all
+  TEST_FUNCTION: test_run_qgis_tests
   DOCKER_IMAGE: qgis/qgis
 
 
