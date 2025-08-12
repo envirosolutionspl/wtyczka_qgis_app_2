@@ -90,7 +90,7 @@ class SaveLayerToGmlTest(unittest.TestCase):
         self.data_root = pathlib.Path(self.plugin_dir) / "test" / "data"
 
         # --- patch QMessageBox.exec_ w obu przestrzeniach nazw
-        from PyQt5 import QtWidgets as QtW1
+        from qgis.PyQt import QtWidgets as QtW1
         from qgis.PyQt import QtWidgets as QtW2
         self.__class__._qtw1 = QtW1
         self.__class__._qtw2 = QtW2
@@ -137,7 +137,7 @@ class SaveLayerToGmlTest(unittest.TestCase):
 
     # ---------- util: bezpieczny zapis GML (patchuje QFileDialog w PyQt5 i qgis.PyQt)
     def _safe_save(self, out_path: pathlib.Path, plugin, ctx: str) -> bool:
-        from PyQt5 import QtWidgets as QtW1
+        from qgis.PyQt import QtWidgets as QtW1
         from qgis.PyQt import QtWidgets as QtW2
 
         orig1 = QtW1.QFileDialog.getSaveFileName
