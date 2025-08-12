@@ -1645,7 +1645,7 @@ class AppModule(BaseModule):
             return
         
         ds = ogr.Open(file)
-        print(f'file {file}')
+
         warstwy = [x.GetName() for x in ds]
         
         activeDlgname = self.activeDlg.name
@@ -2009,6 +2009,7 @@ class AppModule(BaseModule):
                 showPopup("Wczytaj warstwę","Poprawnie wczytano warstwę " + layerName + ".")
         QApplication.restoreOverrideCursor()
         return gkpg
+
 
 
     def saveLayerToGML(self):
