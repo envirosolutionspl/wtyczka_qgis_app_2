@@ -80,13 +80,13 @@ class SaveLayerToGmlTest(unittest.TestCase):
     def setUp(self):
         self.plugin_dir = os.path.dirname(os.path.dirname(__file__))
         self.data_root = pathlib.Path(self.plugin_dir) / "test" / "data"
-        from PyQt5 import QtWidgets
+        from qgis.PyQt import QtWidgets
         self._orig_msgbox_exec = QtWidgets.QMessageBox.exec_
         QtWidgets.QMessageBox.exec_ = lambda self: QtWidgets.QMessageBox.Ok
 
     def tearDown(self):  # noqa: D401 - default teardown
         """Przywraca oryginalną metodę exec_ QMessageBox."""
-        from PyQt5 import QtWidgets
+        from qgis.PyQt import QtWidgets
         QtWidgets.QMessageBox.exec_ = self._orig_msgbox_exec
 
     # ---------- util: wczytanie warstwy (bez asercji)
@@ -197,7 +197,7 @@ class SaveLayerToGmlTest(unittest.TestCase):
                 lyr_pog = self._safe_plugin_load(plugin, pog_tmp, f"{case.name}: POG")
                 if lyr_pog and lyr_pog.isValid():
                     plugin.activeDlg.layers_comboBox.setCurrentText(lyr_pog.name())
-                    from PyQt5 import QtWidgets as QtW
+                    from qgis.PyQt import QtWidgets as QtW
                     out_pog = tmpdir / f"output_pog_{case.name}.gml"
                     self._safe_save(QtW, out_pog, plugin, f"{case.name}: zapis POG")
 
@@ -215,10 +215,11 @@ class SaveLayerToGmlTest(unittest.TestCase):
                                                          f"{case.name}/{spl_src.name}: SPL")
                         if lyr_spl and lyr_spl.isValid():
                             plugin_spl.activeDlg.layers_comboBox.setCurrentText(lyr_spl.name())
-                            from PyQt5 import QtWidgets as QtW
+                            from qgis.PyQt import QtWidgets as QtW
                             out_spl = tmpdir / f"output_spl_{case.name}_{spl_src.stem}.gml"
                             self._safe_save(QtW, out_spl, plugin_spl,
                                             f"{case.name}/{spl_src.name}: zapis SPL")
+                    QgsProject.instance().removeAllMapLayers()
 
     # ---------- PODSUMOWANIE
     @classmethod
