@@ -232,7 +232,7 @@ class SaveLayerToGmlTest(unittest.TestCase):
     # ---------- MAIN
     def test_save_layer_to_gml(self):
         self.clean_up_before_start()
-        for case in self.data_root.iterdir():
+        for case in sorted(self.data_root.iterdir(), key=lambda p: p.name):
             with self.subTest(folder=case):
                 QgsApplication.instance()
                 self.run_test(case)
