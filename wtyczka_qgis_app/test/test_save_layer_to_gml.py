@@ -16,6 +16,7 @@ import tempfile
 import unittest
 import warnings
 import xml.etree.ElementTree as ET
+import itertools
 
 from qgis.core import (
     QgsApplication,
@@ -134,8 +135,15 @@ class SaveLayerToGmlTest(unittest.TestCase):
         self.__class__.save_ok.append(ctx)
         return True
 
-    # ---------- MAIN
-    def test_save_layer_to_gml(self):
+    def clean_up_before_start(self):
+        # usuwanie plikow tymczasowych
+        self.__class__.load_ok.clear()
+        self.__class__.load_fail.clear()
+        self.__class__.save_ok.clear()
+        for file in itertools.chain(pathlib.Path(tempfile.gettempdir()).glob("*.gpkg*"), pathlib.Path(tempfile.gettempdir()).glob("*.gml"), pathlib.Path(tempfile.gettempdir()).glob("*.gfs")):
+            os.remove(file)
+
+    def run_test(self, case):
         # -- QGIS init
         if QgsApplication.instance() is None:
             try:
@@ -143,6 +151,8 @@ class SaveLayerToGmlTest(unittest.TestCase):
                 start_app()
             except Exception:
                 self.skipTest("Brak środowiska QGIS")
+        else:
+            QgsApplication.instance()
 
         # -- iface stub
         try:
@@ -159,67 +169,74 @@ class SaveLayerToGmlTest(unittest.TestCase):
         from wtyczka_qgis_app.modules.app.wtyczka_app import AppModule
         tmpdir = pathlib.Path(tempfile.gettempdir())
         prof_dir = pathlib.Path(QgsApplication.qgisSettingsDirPath())
+        
+        with self.subTest(folder=case):
+            pog_src = case / "pog" / "AktPlanowaniaPrzestrzennego.gml"
+            strefy_dir = case / "strefy"
 
-        for case in sorted(self.data_root.iterdir(), key=lambda p: p.name):
-            with self.subTest(folder=case.name):
-                pog_src = case / "pog" / "AktPlanowaniaPrzestrzennego.gml"
-                strefy_dir = case / "strefy"
+            pog_tmp = shutil.copy(pog_src, tmpdir / pog_src.name)
 
-                pog_tmp = shutil.copy(pog_src, tmpdir / pog_src.name)
+            # ---- ustawienia (nawet jeśli JPT się nie uda, nie przerywamy)
+            settings = QgsSettings()
+            settings.setValue("qgis_app2/settings/defaultPath", str(tmpdir))
+            try:
+                jpt = extract_jpt_from_pog(pog_tmp)
+                settings.setValue("qgis_app2/settings/jpt", jpt)
+                settings.setValue("qgis_app2/settings/strefaPL2000", get_crs_from_jpt(jpt[:4]))
+            except Exception as exc:  # noqa: BLE001
+                warnings.warn(f"{case.name}: problem z JPT ({exc})", RuntimeWarning)
 
-                # ---- ustawienia (nawet jeśli JPT się nie uda, nie przerywamy)
-                settings = QgsSettings()
-                settings.setValue("qgis_app2/settings/defaultPath", str(tmpdir))
-                try:
-                    jpt = extract_jpt_from_pog(pog_tmp)
-                    settings.setValue("qgis_app2/settings/jpt", jpt)
-                    settings.setValue("qgis_app2/settings/strefaPL2000", get_crs_from_jpt(jpt[:4]))
-                except Exception as exc:  # noqa: BLE001
-                    warnings.warn(f"{case.name}: problem z JPT ({exc})", RuntimeWarning)
+            # ---- kopiuj zasoby wtyczki (jeśli brak – tylko ostrzeżenie)
+            safe_copy(pathlib.Path(self.plugin_dir) / "GFS" / "template.gfs",
+                    prof_dir / "python/plugins/wtyczka_qgis_app/GFS/template.gfs",
+                    case.name)
+            safe_copy(pathlib.Path(self.plugin_dir) / "modules" / "templates",
+                    prof_dir / "python/plugins/wtyczka_qgis_app/modules/templates",
+                    case.name)
+            safe_copy(pathlib.Path(self.plugin_dir) / "modules/app/A00_Granice_panstwa",
+                    prof_dir / "python/plugins/wtyczka_qgis_app/modules/app/A00_Granice_panstwa",
+                    case.name)
 
-                # ---- kopiuj zasoby wtyczki (jeśli brak – tylko ostrzeżenie)
-                safe_copy(pathlib.Path(self.plugin_dir) / "GFS" / "template.gfs",
-                          prof_dir / "python/plugins/wtyczka_qgis_app/GFS/template.gfs",
-                          case.name)
-                safe_copy(pathlib.Path(self.plugin_dir) / "modules" / "templates",
-                          prof_dir / "python/plugins/wtyczka_qgis_app/modules/templates",
-                          case.name)
-                safe_copy(pathlib.Path(self.plugin_dir) / "modules/app/A00_Granice_panstwa",
-                          prof_dir / "python/plugins/wtyczka_qgis_app/modules/app/A00_Granice_panstwa",
-                          case.name)
+            # ======================= POG =================================
+            plugin = AppModule(iface)
+            plugin.activeDlg = plugin.wektorInstrukcjaDialogPOG
+            plugin.activeDlg.name = "AktPlanowaniaPrzestrzennego"
+            plugin.activeDlg.layers_comboBox = QgsMapLayerComboBox()
 
-                # ======================= POG =================================
-                plugin = AppModule(iface)
-                plugin.activeDlg = plugin.wektorInstrukcjaDialogPOG
-                plugin.activeDlg.name = "AktPlanowaniaPrzestrzennego"
-                plugin.activeDlg.layers_comboBox = QgsMapLayerComboBox()
+            lyr_pog = self._safe_plugin_load(plugin, pog_tmp, f"{case.name}: POG")
+            if lyr_pog and lyr_pog.isValid():
+                plugin.activeDlg.layers_comboBox.setCurrentText(lyr_pog.name())
+                from qgis.PyQt import QtWidgets as QtW
+                out_pog = tmpdir / f"output_pog_{case.name}.gml"
+                self._safe_save(QtW, out_pog, plugin, f"{case.name}: zapis POG")
 
-                lyr_pog = self._safe_plugin_load(plugin, pog_tmp, f"{case.name}: POG")
-                if lyr_pog and lyr_pog.isValid():
-                    plugin.activeDlg.layers_comboBox.setCurrentText(lyr_pog.name())
+            # ======================= SPL =================================
+            for spl_src in strefy_dir.glob("*.gml"):
+                spl_tmp = shutil.copy(spl_src, tmpdir / spl_src.name)
+
+                plugin_spl = AppModule(iface)
+                plugin_spl.activeDlg = plugin_spl.wektorInstrukcjaDialogSPL
+                plugin_spl.activeDlg.name = "StrefaPlanistyczna"
+                plugin_spl.activeDlg.layers_comboBox = QgsMapLayerComboBox()
+
+                lyr_spl = self._safe_plugin_load(plugin_spl, spl_tmp,
+                                                f"{case.name}/{spl_src.name}: SPL")
+                if lyr_spl and lyr_spl.isValid():
+                    plugin_spl.activeDlg.layers_comboBox.setCurrentText(lyr_spl.name())
                     from qgis.PyQt import QtWidgets as QtW
-                    out_pog = tmpdir / f"output_pog_{case.name}.gml"
-                    self._safe_save(QtW, out_pog, plugin, f"{case.name}: zapis POG")
+                    out_spl = tmpdir / f"output_spl_{case.name}_{spl_src.stem}.gml"
+                    self._safe_save(QtW, out_spl, plugin_spl,
+                                    f"{case.name}/{spl_src.name}: zapis SPL")
 
-                # ======================= SPL =================================
-                for spl_src in strefy_dir.glob("*.gml"):
-                    with self.subTest(folder=case.name, file=spl_src.name):
-                        spl_tmp = shutil.copy(spl_src, tmpdir / spl_src.name)
 
-                        plugin_spl = AppModule(iface)
-                        plugin_spl.activeDlg = plugin_spl.wektorInstrukcjaDialogSPL
-                        plugin_spl.activeDlg.name = "StrefaPlanistyczna"
-                        plugin_spl.activeDlg.layers_comboBox = QgsMapLayerComboBox()
-
-                        lyr_spl = self._safe_plugin_load(plugin_spl, spl_tmp,
-                                                         f"{case.name}/{spl_src.name}: SPL")
-                        if lyr_spl and lyr_spl.isValid():
-                            plugin_spl.activeDlg.layers_comboBox.setCurrentText(lyr_spl.name())
-                            from qgis.PyQt import QtWidgets as QtW
-                            out_spl = tmpdir / f"output_spl_{case.name}_{spl_src.stem}.gml"
-                            self._safe_save(QtW, out_spl, plugin_spl,
-                                            f"{case.name}/{spl_src.name}: zapis SPL")
-                    QgsProject.instance().removeAllMapLayers()
+    # ---------- MAIN
+    def test_save_layer_to_gml(self):
+        self.clean_up_before_start()
+        for case in self.data_root.iterdir():
+            with self.subTest(folder=case):
+                QgsApplication.instance()
+                self.run_test(case)
+                QgsProject.instance().removeAllMapLayers()
 
     # ---------- PODSUMOWANIE
     @classmethod
@@ -245,4 +262,5 @@ class SaveLayerToGmlTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
+
     unittest.main(verbosity=2, warnings="always")
