@@ -13,7 +13,6 @@ import pathlib
 import shutil
 import sys
 import tempfile
-import unittest
 import warnings
 import xml.etree.ElementTree as ET
 import itertools
@@ -25,6 +24,7 @@ from qgis.core import (
     QgsVectorLayer,
 )
 from qgis.gui import QgsMapLayerComboBox
+from qgis.testing import start_app, unittest
 
 warnings.simplefilter("always", category=RuntimeWarning)
 
@@ -82,6 +82,13 @@ class SaveLayerToGmlTest(unittest.TestCase):
         self.plugin_dir = os.path.dirname(os.path.dirname(__file__))
         self.data_root = pathlib.Path(self.plugin_dir) / "test" / "data"
         from qgis.PyQt import QtWidgets
+        # -- QGIS init
+        if QgsApplication.instance() is None:
+            try:
+                start_app()
+            except Exception:
+                self.skipTest("Brak środowiska QGIS")
+        QgsApplication.instance()
         self._orig_msgbox_exec = QtWidgets.QMessageBox.exec_
         QtWidgets.QMessageBox.exec_ = lambda self: QtWidgets.QMessageBox.Ok
 
@@ -141,19 +148,12 @@ class SaveLayerToGmlTest(unittest.TestCase):
         self.__class__.load_fail.clear()
         self.__class__.save_ok.clear()
         for file in itertools.chain(pathlib.Path(tempfile.gettempdir()).glob("*.gpkg*"), pathlib.Path(tempfile.gettempdir()).glob("*.gml"), pathlib.Path(tempfile.gettempdir()).glob("*.gfs")):
-            os.remove(file)
+            try:
+                os.remove(file)
+            except PermissionError:
+                print(f"Plik {file} jest niedostępny lub zablokowany")
 
     def run_test(self, case):
-        # -- QGIS init
-        if QgsApplication.instance() is None:
-            try:
-                from qgis.testing import start_app
-                start_app()
-            except Exception:
-                self.skipTest("Brak środowiska QGIS")
-        else:
-            QgsApplication.instance()
-
         # -- iface stub
         try:
             from qgis.utils import iface
@@ -182,6 +182,7 @@ class SaveLayerToGmlTest(unittest.TestCase):
             try:
                 jpt = extract_jpt_from_pog(pog_tmp)
                 settings.setValue("qgis_app2/settings/jpt", jpt)
+                settings.setValue("qgis_app2/settings/rodzajZbioru", "POG")
                 settings.setValue("qgis_app2/settings/strefaPL2000", get_crs_from_jpt(jpt[:4]))
             except Exception as exc:  # noqa: BLE001
                 warnings.warn(f"{case.name}: problem z JPT ({exc})", RuntimeWarning)
@@ -206,26 +207,27 @@ class SaveLayerToGmlTest(unittest.TestCase):
             lyr_pog = self._safe_plugin_load(plugin, pog_tmp, f"{case.name}: POG")
             if lyr_pog and lyr_pog.isValid():
                 plugin.activeDlg.layers_comboBox.setCurrentText(lyr_pog.name())
+                plugin.obrysLayer = lyr_pog.name()
                 from qgis.PyQt import QtWidgets as QtW
                 out_pog = tmpdir / f"output_pog_{case.name}.gml"
                 self._safe_save(QtW, out_pog, plugin, f"{case.name}: zapis POG")
-
+                
             # ======================= SPL =================================
             for spl_src in strefy_dir.glob("*.gml"):
                 spl_tmp = shutil.copy(spl_src, tmpdir / spl_src.name)
 
-                plugin_spl = AppModule(iface)
-                plugin_spl.activeDlg = plugin_spl.wektorInstrukcjaDialogSPL
-                plugin_spl.activeDlg.name = "StrefaPlanistyczna"
-                plugin_spl.activeDlg.layers_comboBox = QgsMapLayerComboBox()
+                # plugin_spl = AppModule(iface)
+                plugin.activeDlg = plugin.wektorInstrukcjaDialogSPL
+                plugin.activeDlg.name = "StrefaPlanistyczna"
+                plugin.activeDlg.layers_comboBox = QgsMapLayerComboBox()
 
-                lyr_spl = self._safe_plugin_load(plugin_spl, spl_tmp,
+                lyr_spl = self._safe_plugin_load(plugin, spl_tmp,
                                                 f"{case.name}/{spl_src.name}: SPL")
                 if lyr_spl and lyr_spl.isValid():
-                    plugin_spl.activeDlg.layers_comboBox.setCurrentText(lyr_spl.name())
+                    plugin.activeDlg.layers_comboBox.setCurrentText(lyr_spl.name())
                     from qgis.PyQt import QtWidgets as QtW
                     out_spl = tmpdir / f"output_spl_{case.name}_{spl_src.stem}.gml"
-                    self._safe_save(QtW, out_spl, plugin_spl,
+                    self._safe_save(QtW, out_spl, plugin,
                                     f"{case.name}/{spl_src.name}: zapis SPL")
 
 
@@ -262,5 +264,4 @@ class SaveLayerToGmlTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-
-    unittest.main(verbosity=2, warnings="always")
+    nose2.main()

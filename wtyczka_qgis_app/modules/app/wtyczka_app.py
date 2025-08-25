@@ -74,6 +74,8 @@ class AppModule(BaseModule):
         self.OUZ_GML_saved = False
         self.OZS_GML_saved = False
         self.OSD_GML_saved = False
+
+        self.czyWynikKontroliPozytywny = True
         
     # region okna moduł app
         self.pytanieAppDialog = PytanieAppDialog()
@@ -661,7 +663,7 @@ class AppModule(BaseModule):
                 self.iface.messageBar().pushCritical("Błąd geometrii zbioru:", trescBledu)
                 return False
             
-            defaultPath = s.value("qgis_app2/settings/defaultPath", "/")
+            defaultPath = self.s.value("qgis_app2/settings/defaultPath", "/")
             self.fn = QFileDialog.getSaveFileName(
                 directory=defaultPath, filter="pliki GML (*.gml)")[0]
             if self.fn:
@@ -1000,7 +1002,7 @@ class AppModule(BaseModule):
                                 doc1[0] = self.updateObowiazujeOd(doc1[0], lokalnyids_to_update, dataObowiazujeOd, dataCzasTeraz)
                                 continue
                 
-                defaultPath = s.value("qgis_app2/settings/defaultPath", "/")
+                defaultPath = self.s.value("qgis_app2/settings/defaultPath", "/")
                 self.fn = QFileDialog.getSaveFileName(directory=defaultPath, filter="GML Files (*.gml)")[0]
                 if self.fn:
                     xml_string = utils.mergeDocsToAPP(docList1)
@@ -1794,8 +1796,9 @@ class AppModule(BaseModule):
                     })
                     if checkvalidity['INVALID_OUTPUT'].featureCount() > 0:
                         showPopup("Wczytaj warstwę",f"Warstwa \"{layerName}\" posiada co najmniej jeden obiekt z błędną geometrią.\nNastąpi próba wczytania warstwy.")
+                        if not layer.isValid():
+                            return
                         self.kontrolaGeometriiWarstwy(layer)
-                        # continue
                     
                     isLayerInPoland(layer, layerName)
                     
@@ -2058,20 +2061,20 @@ class AppModule(BaseModule):
         
         if not isinstance(self.activeDlg, TworzenieOUZDialog):
             showPopup("Zapisz warstwę","Zostaną teraz przeprowadzone kontrole warstwy " + layerName + ". Może to potrwać do kilku minut.")
-            czyWynikKontroliPozytywny = True
+            self.czyWynikKontroliPozytywny = True
             
             if not self.kontrolaWarstwy(self.obrysLayer):
-                czyWynikKontroliPozytywny = False
+                self.czyWynikKontroliPozytywny = False
             if not self.kontrolaGeometriiWarstwy(self.obrysLayer):
-                czyWynikKontroliPozytywny = False
+                self.czyWynikKontroliPozytywny = False
             if self.activeDlg != self.wektorInstrukcjaDialogPOG and not self.czyObiektyUnikalne(self.obrysLayer,'oznaczenie'):
-                czyWynikKontroliPozytywny = False
+                self.czyWynikKontroliPozytywny = False
             if self.activeDlg != self.wektorInstrukcjaDialogPOG and not self.czyObiektyUnikalne(self.obrysLayer,'status'):
-                czyWynikKontroliPozytywny = False
+                self.czyWynikKontroliPozytywny = False
             if self.activeDlg == self.wektorInstrukcjaDialogOUZ and self.OUZpowyzej125procent(self.obrysLayer):
-                czyWynikKontroliPozytywny = False
+                self.czyWynikKontroliPozytywny = False
             
-            if not czyWynikKontroliPozytywny:
+            if not self.czyWynikKontroliPozytywny:
                 return
         
         if isinstance(self.activeDlg, TworzenieOUZDialog):
@@ -2336,12 +2339,12 @@ class AppModule(BaseModule):
                     
                     bledne_geometrie['INVALID_OUTPUT'].commitChanges()
                     
-                if bledne_geometrie['INVALID_OUTPUT'].featureCount() > 0 or bledne_geometrie['ERROR_OUTPUT'].featureCount() > 0:
-                    showPopup("Błąd warstwy obrysu", "Występuje niepoprawna geometria w warstwie.\nDodano warstwę z błędnymi obiektami w zakresie geometrii oraz warstwę punktową wskazującą miejsca z błędami.\nDalsza kontrola została wstrzymana z uwagi na błędy geometrii.")
-                    QgsProject.instance().addMapLayer(bledne_geometrie['ERROR_OUTPUT'])
-                    QgsProject.instance().addMapLayer(bledne_geometrie['INVALID_OUTPUT'])
-                    return False
-            
+                # if bledne_geometrie['INVALID_OUTPUT'].featureCount() > 0 or bledne_geometrie['ERROR_OUTPUT'].featureCount() > 0:
+                #     showPopup("Błąd warstwy obrysu", "Występuje niepoprawna geometria w warstwie.\nDodano warstwę z błędnymi obiektami w zakresie geometrii oraz warstwę punktową wskazującą miejsca z błędami.\nDalsza kontrola została wstrzymana z uwagi na błędy geometrii.")
+                #     QgsProject.instance().addMapLayer(bledne_geometrie['ERROR_OUTPUT'])
+                #     QgsProject.instance().addMapLayer(bledne_geometrie['INVALID_OUTPUT'])
+                #     return False
+                
             # usuwanie pustych geometrii
             removenullgeometries = processing.run("native:removenullgeometries", {
                 'INPUT': obrysLayer,
@@ -2368,7 +2371,7 @@ class AppModule(BaseModule):
                 if epsg in crs:
                     srsName = crs
                     break
-            
+
             # Kontrola układu współrzędnych
             if srsName == '':
                 showPopup("Błąd warstwy obrysu",
@@ -2522,7 +2525,7 @@ class AppModule(BaseModule):
                     wynik['DELETED'].startEditing()
                     for obj in wynik['DELETED'].getFeatures():
                         geom = obj.geometry()
-                        if geom.area() < 1: # 1 m2
+                        if geom.area() < 0: # 1 m2
                             wynik['DELETED'].deleteFeature(obj.id())
                         else:
                             smuklosc = (geom.length() ** 2) / geom.area()
